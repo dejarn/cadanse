@@ -25,13 +25,13 @@ Browser
 
 | Layer | Technology | Role |
 |---|---|---|
-| Frontend | Next.js 15 App Router + React | Pages, layouts, client components |
+| Frontend | Next.js 16 App Router + React 19 | Pages, layouts, client components |
 | API | Next.js Route Handlers | REST endpoints, SSE stream |
-| ORM | Prisma | Schema, migrations, type-safe queries |
-| Database | PostgreSQL 16 | Persistent data store |
+| ORM | Prisma 7 | Schema, migrations, type-safe queries |
+| Database | PostgreSQL 18 | Persistent data store |
 | Auth | NextAuth.js v5 (Auth.js) | Session-based authentication |
 | Real-time | SSE via Route Handler | Live performance order updates (public view) |
-| Styling | MUI (Material UI) | Component library — mobile-first |
+| Styling | MUI v9 (Material UI) | Component library — mobile-first |
 | Testing | Vitest | Unit tests for the ordering algorithm |
 | Linting | ESLint + Prettier | Code style enforcement |
 | Language | TypeScript (strict mode) | End-to-end type safety |
@@ -70,7 +70,7 @@ The public performance order view connects to a SSE Route Handler (`GET /api/pub
 | Service | Image |
 |---|---|
 | `app` | Custom Next.js image (multi-stage build) |
-| `db` | `postgres:16-alpine` |
+| `db` | `postgres:18-alpine` |
 
 Database data persisted via Docker volume. App connects to DB via internal Docker network.
 

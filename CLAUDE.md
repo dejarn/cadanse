@@ -26,7 +26,7 @@ docker compose down       # Stop
 
 ## Architecture
 
-Next.js 15 App Router. No separate backend — Route Handlers serve the REST API.
+Next.js 16 App Router. No separate backend — Route Handlers serve the REST API.
 
 **Rendering rule**: Server Components by default. `"use client"` only for forms, drag & drop, SSE.
 
@@ -82,7 +82,7 @@ Raspberry Pi, Docker Compose, Traefik TLS. CD triggers on GitHub Release.
 
 CI (every PR): lint + typecheck + Vitest via GitHub Actions.
 
-Production services: `app` (Next.js multi-stage build) + `db` (postgres:16-alpine). DB data in Docker volume.
+Production services: `app` (Next.js multi-stage build) + `db` (postgres:18-alpine). DB data in Docker volume.
 
 ## Docs
 
