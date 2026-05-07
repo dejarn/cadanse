@@ -471,7 +471,7 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
               </Box>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                Pas d'autres cours disponibles.
+                Pas d&apos;autres cours disponibles.
               </Typography>
             )
           ) : (

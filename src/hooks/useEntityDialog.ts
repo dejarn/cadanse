@@ -1,18 +1,21 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 
 type EntityWithId = { id: string }
 
 export function useEntityDialog<T extends EntityWithId>(items: T[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [lastSelected, setLastSelected] = useState<T | null>(null)
   const selected = selectedId ? (items.find((item) => item.id === selectedId) ?? null) : null
-  const selectedRef = useRef<T | null>(null)
-
-  if (selected) selectedRef.current = selected
 
   return {
     selected,
-    displaySelected: selected ?? selectedRef.current,
-    open: (item: T) => setSelectedId(item.id),
+    get displaySelected() {
+      return items.find((item) => item.id === selectedId) ?? lastSelected
+    },
+    open: (item: T) => {
+      setSelectedId(item.id)
+      setLastSelected(item)
+    },
     close: () => setSelectedId(null),
   }
 }

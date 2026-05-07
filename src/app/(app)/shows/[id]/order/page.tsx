@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation"
-import dynamic from "next/dynamic"
 import { prisma } from "@/lib/prisma"
-
-const OrderClient = dynamic(() => import("./OrderClient"), { ssr: false })
+import OrderClient from "./OrderClient"
 
 interface Props {
   params: Promise<{ id: string }>

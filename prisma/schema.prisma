@@ -106,7 +106,7 @@ model StudentClass {
 model Show {
   id              String    @id @default(uuid())
   name            String
-  date            DateTime
+  date            DateTime    @db.Date
   seasonId        String
   currentPosition Int?
   createdAt       DateTime  @default(now())
