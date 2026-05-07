@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 
 export default async function SeasonsPage() {
   const session = await auth()
-  if (session?.user.role !== "SUPER_ADMIN") redirect("/app/dashboard")
+  if (session?.user.role !== "SUPER_ADMIN") redirect("/")
 
   const seasons = await prisma.season.findMany({ orderBy: { createdAt: "desc" } })
 

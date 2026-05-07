@@ -62,6 +62,10 @@ const theme = createTheme({
             scrollBehavior: "auto !important",
           },
         },
+        body: {
+          background:
+            "radial-gradient(circle at 12% 0%, rgba(212,168,83,0.06) 0%, transparent 36%), radial-gradient(circle at 90% 100%, rgba(212,168,83,0.04) 0%, transparent 40%), #0F0E0D",
+        },
       },
     },
     MuiCard: {
@@ -86,6 +90,7 @@ const theme = createTheme({
           fontFamily: "'DM Sans', sans-serif",
           borderRadius: 8,
           fontWeight: 500,
+          letterSpacing: "0.01em",
         },
         containedPrimary: {
           backgroundColor: "#D4A853",
@@ -104,6 +109,67 @@ const theme = createTheme({
         },
         containedError: {
           color: "#F5F0E8",
+        },
+      },
+    },
+    MuiTextField: {
+      defaultProps: {
+        variant: "outlined",
+      },
+    },
+    MuiFormLabel: {
+      styleOverrides: {
+        root: {
+          color: "#9A9089",
+          "&.Mui-focused": {
+            color: "#D4A853",
+          },
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#221F1C",
+          borderRadius: 8,
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(212,168,83,0.24)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(212,168,83,0.42)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#D4A853",
+            borderWidth: 1,
+          },
+          "&.Mui-error .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#E05252",
+          },
+        },
+        input: {
+          color: "#F5F0E8",
+          "&::placeholder": {
+            color: "#9A9089",
+            opacity: 1,
+          },
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          border: "1px solid transparent",
+        },
+        standardError: {
+          color: "#F5F0E8",
+          backgroundColor: "rgba(224,82,82,0.12)",
+          borderColor: "rgba(224,82,82,0.35)",
+        },
+        standardSuccess: {
+          color: "#F5F0E8",
+          backgroundColor: "rgba(106,171,142,0.12)",
+          borderColor: "rgba(106,171,142,0.35)",
         },
       },
     },

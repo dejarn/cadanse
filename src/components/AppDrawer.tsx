@@ -21,16 +21,16 @@ import { usePathname, useRouter } from "next/navigation"
 const DRAWER_WIDTH = 260
 
 const navItems = [
-  { label: "Tableau de bord", href: "/app/dashboard", icon: <DashboardIcon /> },
-  { label: "Élèves", href: "/app/students", icon: <PeopleIcon /> },
-  { label: "Professeurs", href: "/app/teachers", icon: <PersonIcon /> },
-  { label: "Cours", href: "/app/classes", icon: <ClassIcon /> },
-  { label: "Spectacles", href: "/app/shows", icon: <TheaterComedyIcon /> },
+  { label: "Tableau de bord", href: "/dashboard", icon: <DashboardIcon /> },
+  { label: "Élèves", href: "/students", icon: <PeopleIcon /> },
+  { label: "Professeurs", href: "/teachers", icon: <PersonIcon /> },
+  { label: "Cours", href: "/classes", icon: <ClassIcon /> },
+  { label: "Spectacles", href: "/shows", icon: <TheaterComedyIcon /> },
 ]
 
 const adminItems = [
-  { label: "Comptes", href: "/app/admin/users", icon: <AdminPanelSettingsIcon /> },
-  { label: "Saisons", href: "/app/admin/seasons", icon: <CalendarMonthIcon /> },
+  { label: "Comptes", href: "/admin/users", icon: <AdminPanelSettingsIcon /> },
+  { label: "Saisons", href: "/admin/seasons", icon: <CalendarMonthIcon /> },
 ]
 
 interface Props {
