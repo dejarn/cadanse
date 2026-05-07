@@ -23,8 +23,9 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
-# prisma CLI is devDep — absent from standalone output, needed for migrate deploy
+# prisma CLI + engines — devDeps absent from standalone output, needed for migrate deploy
 COPY --from=build --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+COPY --from=build --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
