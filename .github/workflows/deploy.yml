@@ -1,0 +1,35 @@
+name: Deploy
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    name: Build & deploy on Pi
+    runs-on: [self-hosted, linux, arm64]
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write .env
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+          AUTH_URL=${{ secrets.AUTH_URL }}
+          SUPER_ADMIN_USERNAME=${{ secrets.SUPER_ADMIN_USERNAME }}
+          SUPER_ADMIN_PASSWORD=${{ secrets.SUPER_ADMIN_PASSWORD }}
+          APP_HOST=${{ secrets.APP_HOST }}
+          EOF
+
+      - name: Build and deploy
+        run: docker compose up --build -d --remove-orphans --wait
+
+      - name: Prune old images
+        if: always()
+        run: docker image prune -f
