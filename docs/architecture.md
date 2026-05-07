@@ -74,6 +74,8 @@ The public performance order view connects to a SSE Route Handler (`GET /api/pub
 
 Database data persisted via Docker volume. App connects to DB via internal Docker network.
 
+`docker-compose.yml` is production-only (Traefik labels, resource limits, Pi networking). Local dev uses `npm run dev` + a standalone `docker compose up -d` for Postgres only — no Traefik, no production config.
+
 ## Decisions
 
 | Decision | Choice | Reason |
