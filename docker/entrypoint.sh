@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
-node node_modules/prisma/build/index.js migrate deploy
+NODE_PATH=/app/prisma-node-modules node /app/prisma-node-modules/prisma/build/index.js migrate deploy
 exec node server.js
