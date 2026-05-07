@@ -33,7 +33,7 @@ Dark theme only.
 | `accent-muted` | `rgba(212,168,83,0.15)` | Borders, subtle accents |
 | `text-primary` | `#F5F0E8` | Main text — warm white |
 | `text-secondary` | `#9A9089` | Labels, placeholders, metadata |
-| `error` | `#E05252` | Errors, destructive actions |
+| `error` | `#A85A5A` | Errors, destructive actions |
 | `success` | `#6AAB8E` | Confirmations, validated states |
 
 MUI theme configured via `createTheme` with these tokens as CSS variables. No MUI default blue.
@@ -64,7 +64,7 @@ No animations on form fields, tables, or standard navigation.
 **Buttons**:
 - Primary: gold background `#D4A853`, dark text `#0F0E0D`, no outline.
 - Secondary: transparent, gold border, gold text.
-- Destructive: `#E05252`, used only for delete actions with confirmation.
+- Destructive: `#A85A5A`, used only for delete actions with confirmation.
 
 **Burger menu (AppDrawer)**:
 - Slides from left.

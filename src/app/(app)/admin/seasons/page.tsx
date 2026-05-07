@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
-import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
 import { prisma } from "@/lib/prisma"
+import SeasonsClient from "./SeasonsClient"
 
 export default async function SeasonsPage() {
   const session = await auth()
@@ -12,12 +12,7 @@ export default async function SeasonsPage() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Saisons
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {seasons.length === 0 ? "Aucune saison créée." : `${seasons.length} saison(s)`}
-      </Typography>
+      <SeasonsClient seasons={seasons} />
     </Box>
   )
 }

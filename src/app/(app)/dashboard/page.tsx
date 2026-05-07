@@ -3,16 +3,13 @@ import Box from "@mui/material/Box"
 import Grid from "@mui/material/Grid"
 import Card from "@mui/material/Card"
 import CardContent from "@mui/material/CardContent"
-import { getActiveSeason, getStudentCount, getTeacherCount } from "@/lib/queries"
-import { prisma } from "@/lib/prisma"
-
-async function getClassCount(seasonId: string) {
-  return prisma.class.count({ where: { seasonId } })
-}
-
-async function getShowCount(seasonId: string) {
-  return prisma.show.count({ where: { seasonId } })
-}
+import {
+  getActiveSeason,
+  getClassCountBySeason,
+  getShowCountBySeason,
+  getStudentCount,
+  getTeacherCount,
+} from "@/lib/stats-queries"
 
 export default async function DashboardPage() {
   const season = await getActiveSeason()
@@ -20,8 +17,8 @@ export default async function DashboardPage() {
   const [studentCount, teacherCount, classCount, showCount] = await Promise.all([
     getStudentCount(),
     getTeacherCount(),
-    season ? getClassCount(season.id) : Promise.resolve(0),
-    season ? getShowCount(season.id) : Promise.resolve(0),
+    season ? getClassCountBySeason(season.id) : Promise.resolve(0),
+    season ? getShowCountBySeason(season.id) : Promise.resolve(0),
   ])
 
   const stats = [
@@ -37,7 +34,7 @@ export default async function DashboardPage() {
         {season ? `Saison ${season.label}` : "Aucune saison active"}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-        Vue d'ensemble
+        Vue d&apos;ensemble
       </Typography>
 
       <Grid container spacing={3}>

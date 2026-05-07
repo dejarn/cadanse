@@ -1,6 +1,6 @@
 import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
-import { getActiveSeason } from "@/lib/queries"
+import { getActiveSeason } from "@/lib/stats-queries"
 import { prisma } from "@/lib/prisma"
 
 export default async function ShowsPage() {

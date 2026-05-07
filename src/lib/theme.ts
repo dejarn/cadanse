@@ -17,7 +17,7 @@ const theme = createTheme({
       main: "#9A9089",
     },
     error: {
-      main: "#E05252",
+      main: "#A85A5A",
     },
     success: {
       main: "#6AAB8E",
@@ -51,7 +51,7 @@ const theme = createTheme({
           "--accent-muted": "rgba(212,168,83,0.15)",
           "--text-primary": "#F5F0E8",
           "--text-secondary": "#9A9089",
-          "--error": "#E05252",
+          "--error": "#A85A5A",
           "--success": "#6AAB8E",
         },
         "@media (prefers-reduced-motion: reduce)": {
@@ -92,25 +92,32 @@ const theme = createTheme({
           fontWeight: 500,
           letterSpacing: "0.01em",
         },
-        containedPrimary: {
-          backgroundColor: "#D4A853",
-          color: "#0F0E0D",
-          "&:hover": {
-            backgroundColor: "#c69c4a",
-          },
-        },
-        outlinedPrimary: {
-          borderColor: "rgba(212,168,83,0.55)",
-          color: "#D4A853",
-          "&:hover": {
-            borderColor: "#D4A853",
-            backgroundColor: "rgba(212,168,83,0.08)",
-          },
-        },
-        containedError: {
-          color: "#F5F0E8",
-        },
       },
+      variants: [
+        {
+          props: { variant: "contained", color: "primary" },
+          style: {
+            backgroundColor: "#D4A853",
+            color: "#0F0E0D",
+            "&:hover": { backgroundColor: "#c69c4a" },
+          },
+        },
+        {
+          props: { variant: "outlined", color: "primary" },
+          style: {
+            borderColor: "rgba(212,168,83,0.55)",
+            color: "#D4A853",
+            "&:hover": {
+              borderColor: "#D4A853",
+              backgroundColor: "rgba(212,168,83,0.08)",
+            },
+          },
+        },
+        {
+          props: { variant: "contained", color: "error" },
+          style: { color: "#F5F0E8" },
+        },
+      ],
     },
     MuiTextField: {
       defaultProps: {
@@ -143,7 +150,7 @@ const theme = createTheme({
             borderWidth: 1,
           },
           "&.Mui-error .MuiOutlinedInput-notchedOutline": {
-            borderColor: "#E05252",
+            borderColor: "#A85A5A",
           },
         },
         input: {
@@ -161,17 +168,25 @@ const theme = createTheme({
           borderRadius: 8,
           border: "1px solid transparent",
         },
-        standardError: {
-          color: "#F5F0E8",
-          backgroundColor: "rgba(224,82,82,0.12)",
-          borderColor: "rgba(224,82,82,0.35)",
-        },
-        standardSuccess: {
-          color: "#F5F0E8",
-          backgroundColor: "rgba(106,171,142,0.12)",
-          borderColor: "rgba(106,171,142,0.35)",
-        },
       },
+      variants: [
+        {
+          props: { variant: "standard", severity: "error" },
+          style: {
+            color: "#F5F0E8",
+            backgroundColor: "rgba(168,90,90,0.14)",
+            borderColor: "rgba(168,90,90,0.38)",
+          },
+        },
+        {
+          props: { variant: "standard", severity: "success" },
+          style: {
+            color: "#F5F0E8",
+            backgroundColor: "rgba(106,171,142,0.12)",
+            borderColor: "rgba(106,171,142,0.35)",
+          },
+        },
+      ],
     },
     MuiDrawer: {
       styleOverrides: {

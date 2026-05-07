@@ -1,30 +1,37 @@
-import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
-import { getActiveSeason } from "@/lib/queries"
+import Typography from "@mui/material/Typography"
+import { getActiveSeason } from "@/lib/stats-queries"
 import { prisma } from "@/lib/prisma"
+import ClassesClient from "./ClassesClient"
 
 export default async function ClassesPage() {
   const season = await getActiveSeason()
-  const classes = season
-    ? await prisma.class.findMany({
-        where: { seasonId: season.id },
-        include: { teacher: true },
-        orderBy: { name: "asc" },
-      })
-    : []
+
+  if (!season) {
+    return (
+      <Box>
+        <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
+          Cours
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Aucune saison active.
+        </Typography>
+      </Box>
+    )
+  }
+
+  const [classes, teachers] = await Promise.all([
+    prisma.class.findMany({
+      where: { seasonId: season.id },
+      include: { teacher: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.teacher.findMany({ orderBy: { lastName: "asc" } }),
+  ])
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Cours
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {!season
-          ? "Aucune saison active."
-          : classes.length === 0
-            ? "Aucun cours pour cette saison."
-            : `${classes.length} cours`}
-      </Typography>
+      <ClassesClient classes={classes} teachers={teachers} seasonId={season.id} />
     </Box>
   )
 }

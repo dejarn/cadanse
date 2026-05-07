@@ -28,6 +28,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params
+
+  const season = await prisma.season.findUnique({
+    where: { id },
+    include: { _count: { select: { classes: true, shows: true } } },
+  })
+
+  if ((season?._count.classes ?? 0) > 0 || (season?._count.shows ?? 0) > 0) {
+    return NextResponse.json({ error: "Cette saison contient des cours ou spectacles." }, { status: 409 })
+  }
+
   await prisma.season.delete({ where: { id } })
   return new NextResponse(null, { status: 204 })
 }

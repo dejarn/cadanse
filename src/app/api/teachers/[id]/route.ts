@@ -19,6 +19,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
+
+  const teacher = await prisma.teacher.findUnique({
+    where: { id },
+    include: { _count: { select: { classes: true } } },
+  })
+
+  if ((teacher?._count.classes ?? 0) > 0) {
+    return NextResponse.json({ error: "Ce professeur est assigné à des cours." }, { status: 409 })
+  }
+
   await prisma.teacher.delete({ where: { id } })
   return new NextResponse(null, { status: 204 })
 }
