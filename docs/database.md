@@ -61,12 +61,6 @@ Single-school instance. No row-level tenant isolation needed. All admins share f
 
 ---
 
-### `Session` (NextAuth)
-
-Managed by NextAuth.js. Standard session table for database session strategy.
-
----
-
 ### `Teacher`
 
 | Column | Type | Notes |

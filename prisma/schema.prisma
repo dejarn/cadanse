@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String        @id @default(uuid())
+  username       String        @unique
+  hashedPassword String
+  role           Role
+  createdAt      DateTime      @default(now())
+
+  inviteTokens   InviteToken[]
+
+  @@map("users")
+}
+
+model InviteToken {
+  id        String    @id @default(uuid())
+  token     String    @unique @default(uuid())
+  createdBy String
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  creator   User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("invite_tokens")
+}
+
+// ─── Domain ──────────────────────────────────────────────────────────────────
+
+model Season {
+  id        String   @id @default(uuid())
+  label     String   @unique
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  classes   Class[]
+  shows     Show[]
+
+  @@map("seasons")
+}
+
+model Teacher {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  createdAt DateTime @default(now())
+
+  classes   Class[]
+
+  @@map("teachers")
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  createdAt DateTime @default(now())
+
+  enrollments    StudentClass[]
+  participations Participation[]
+
+  @@map("students")
+}
+
+model Class {
+  id        String   @id @default(uuid())
+  name      String
+  schedule  String
+  teacherId String
+  seasonId  String
+  createdAt DateTime @default(now())
+
+  teacher     Teacher        @relation(fields: [teacherId], references: [id])
+  season      Season         @relation(fields: [seasonId], references: [id])
+  enrollments StudentClass[]
+  acts        Act[]
+
+  @@map("classes")
+}
+
+model StudentClass {
+  studentId String
+  classId   String
+
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, classId])
+  @@map("student_classes")
+}
+
+model Show {
+  id              String    @id @default(uuid())
+  name            String
+  date            DateTime
+  seasonId        String
+  currentPosition Int?
+  createdAt       DateTime  @default(now())
+
+  season      Season        @relation(fields: [seasonId], references: [id])
+  acts        Act[]
+  actPositions ActPosition[]
+
+  @@map("shows")
+}
+
+model Act {
+  id            String   @id @default(uuid())
+  name          String
+  classId       String
+  showId        String
+  priority      Int?
+  fixedPosition Int?
+  createdAt     DateTime @default(now())
+
+  class          Class           @relation(fields: [classId], references: [id])
+  show           Show            @relation(fields: [showId], references: [id], onDelete: Cascade)
+  participations Participation[]
+  actPositions   ActPosition[]
+
+  @@map("acts")
+}
+
+model Participation {
+  studentId String
+  actId     String
+
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  act       Act     @relation(fields: [actId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, actId])
+  @@map("participations")
+}
+
+model ActPosition {
+  showId   String
+  actId    String
+  position Int
+
+  show     Show   @relation(fields: [showId], references: [id], onDelete: Cascade)
+  act      Act    @relation(fields: [actId], references: [id], onDelete: Cascade)
+
+  @@id([showId, actId])
+  @@map("act_positions")
+}
