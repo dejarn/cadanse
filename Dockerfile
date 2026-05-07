@@ -13,6 +13,13 @@ COPY . .
 RUN pnpm prisma generate
 RUN pnpm build
 
+# npm resolves @prisma/engines into flat node_modules (no pnpm symlinks)
+FROM node:22-alpine AS prisma-cli
+WORKDIR /deps
+COPY package.json ./
+RUN node -e "const p=require('./package.json');const v=p.devDependencies?.prisma||p.dependencies?.prisma||'latest';require('fs').writeFileSync('package.json',JSON.stringify({dependencies:{prisma:v}}))" && \
+    npm install
+
 FROM base AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001 -G nodejs
 WORKDIR /app
@@ -23,9 +30,9 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
-# prisma CLI + engines — devDeps absent from standalone output, needed for migrate deploy
-COPY --from=build --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=build --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# prisma CLI + engines from npm stage (flat node_modules, no pnpm symlink issues)
+COPY --from=prisma-cli --chown=nextjs:nodejs /deps/node_modules/prisma ./node_modules/prisma
+COPY --from=prisma-cli --chown=nextjs:nodejs /deps/node_modules/@prisma ./node_modules/@prisma
 
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
