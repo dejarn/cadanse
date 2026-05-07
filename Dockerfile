@@ -17,7 +17,7 @@ RUN pnpm build
 FROM node:22-alpine AS prisma-cli
 WORKDIR /deps
 COPY package.json ./
-RUN node -e "const p=require('./package.json');const v=p.devDependencies?.prisma||p.dependencies?.prisma||'latest';require('fs').writeFileSync('package.json',JSON.stringify({dependencies:{prisma:v}}))" && \
+RUN node -e "const p=require('./package.json');const v=p.devDependencies?.prisma||p.dependencies?.prisma||'latest';const dv=p.devDependencies?.dotenv||p.dependencies?.dotenv||'latest';require('fs').writeFileSync('package.json',JSON.stringify({dependencies:{prisma:v,dotenv:dv}}))" && \
     npm install
 
 FROM base AS runner
