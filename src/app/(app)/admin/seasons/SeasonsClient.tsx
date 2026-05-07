@@ -15,6 +15,7 @@ import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import FormDialog from "@/components/FormDialog"
+import { useEntityDialog } from "@/hooks/useEntityDialog"
 
 type Season = {
   id: string
@@ -33,17 +34,16 @@ export default function SeasonsClient({ seasons }: Props) {
   const [createError, setCreateError] = useState<string | null>(null)
   const [createLoading, setCreateLoading] = useState(false)
 
-  const [editSeason, setEditSeason] = useState<Season | null>(null)
   const [editLabel, setEditLabel] = useState("")
   const [editError, setEditError] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
 
-  const [deleteSeason, setDeleteSeason] = useState<Season | null>(null)
-  const [deleteLabel, setDeleteLabel] = useState("")
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
   const [activatingId, setActivatingId] = useState<string | null>(null)
+  const editDialog = useEntityDialog(seasons)
+  const deleteDialog = useEntityDialog(seasons)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -66,24 +66,24 @@ export default function SeasonsClient({ seasons }: Props) {
   }
 
   function openEdit(season: Season) {
-    setEditSeason(season)
+    editDialog.open(season)
     setEditLabel(season.label)
     setEditError(null)
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editSeason) return
+    if (!editDialog.selected) return
     setEditError(null)
     setEditLoading(true)
-    const res = await fetch(`/api/seasons/${editSeason.id}`, {
+    const res = await fetch(`/api/seasons/${editDialog.selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ label: editLabel }),
     })
     setEditLoading(false)
     if (res.ok) {
-      setEditSeason(null)
+      editDialog.close()
       router.refresh()
       return
     }
@@ -92,19 +92,18 @@ export default function SeasonsClient({ seasons }: Props) {
   }
 
   function openDelete(season: Season) {
-    setDeleteSeason(season)
-    setDeleteLabel(season.label)
+    deleteDialog.open(season)
     setDeleteError(null)
   }
 
   async function handleDelete() {
-    if (!deleteSeason) return
+    if (!deleteDialog.selected) return
     setDeleteError(null)
     setDeleteLoading(true)
-    const res = await fetch(`/api/seasons/${deleteSeason.id}`, { method: "DELETE" })
+    const res = await fetch(`/api/seasons/${deleteDialog.selected.id}`, { method: "DELETE" })
     setDeleteLoading(false)
     if (res.status === 204) {
-      setDeleteSeason(null)
+      deleteDialog.close()
       router.refresh()
       return
     }
@@ -140,16 +139,18 @@ export default function SeasonsClient({ seasons }: Props) {
             setCreateOpen(true)
           }}
         >
-          Nouvelle saison
+          Ajouter une saison
         </Button>
       </Box>
 
       <Divider sx={{ mb: 2 }} />
 
       {seasons.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Aucune saison créée.
-        </Typography>
+        <Box sx={{ px: 2, py: 1.5, borderRadius: 1, minHeight: 56, display: "flex", alignItems: "center" }}>
+          <Typography variant="body2" color="text.secondary">
+            Aucune saison créée.
+          </Typography>
+        </Box>
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {seasons.map((season) => (
@@ -237,12 +238,12 @@ export default function SeasonsClient({ seasons }: Props) {
       </FormDialog>
 
       <FormDialog
-        open={!!editSeason}
+        open={!!editDialog.selected}
         title="Renommer la saison"
         submitLabel="Enregistrer"
         loading={editLoading}
         error={editError}
-        onClose={() => setEditSeason(null)}
+        onClose={editDialog.close}
         onSubmit={handleEdit}
       >
         <TextField
@@ -257,14 +258,14 @@ export default function SeasonsClient({ seasons }: Props) {
       </FormDialog>
 
       <ConfirmDialog
-        open={!!deleteSeason}
+        open={!!deleteDialog.selected}
         title="Supprimer la saison"
-        message={<>Supprimer la saison «&nbsp;{deleteLabel}&nbsp;» ?</>}
+        message={<>Supprimer la saison «&nbsp;{deleteDialog.displaySelected?.label}&nbsp;» ?</>}
         confirmLabel="Supprimer"
         loading={deleteLoading}
         error={deleteError}
         onConfirm={handleDelete}
-        onClose={() => setDeleteSeason(null)}
+        onClose={deleteDialog.close}
       />
     </>
   )

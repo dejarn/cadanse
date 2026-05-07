@@ -14,6 +14,7 @@ import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import FormDialog from "@/components/FormDialog"
+import { useEntityDialog } from "@/hooks/useEntityDialog"
 
 type Teacher = { id: string; firstName: string; lastName: string }
 
@@ -42,14 +43,15 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
   const [createError, setCreateError] = useState<string | null>(null)
   const [createLoading, setCreateLoading] = useState(false)
 
-  const [editClass, setEditClass] = useState<Class | null>(null)
   const [editForm, setEditForm] = useState(emptyForm)
   const [editError, setEditError] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
 
-  const [deleteClass, setDeleteClass] = useState<Class | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const editDialog = useEntityDialog(classes)
+  const deleteDialog = useEntityDialog(classes)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -72,24 +74,24 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
   }
 
   function openEdit(cls: Class) {
-    setEditClass(cls)
+    editDialog.open(cls)
     setEditForm({ name: cls.name, schedule: cls.schedule, teacherId: cls.teacherId })
     setEditError(null)
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editClass) return
+    if (!editDialog.selected) return
     setEditError(null)
     setEditLoading(true)
-    const res = await fetch(`/api/classes/${editClass.id}`, {
+    const res = await fetch(`/api/classes/${editDialog.selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editForm),
     })
     setEditLoading(false)
     if (res.ok) {
-      setEditClass(null)
+      editDialog.close()
       router.refresh()
       return
     }
@@ -98,18 +100,18 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
   }
 
   function openDelete(cls: Class) {
-    setDeleteClass(cls)
+    deleteDialog.open(cls)
     setDeleteError(null)
   }
 
   async function handleDelete() {
-    if (!deleteClass) return
+    if (!deleteDialog.selected) return
     setDeleteError(null)
     setDeleteLoading(true)
-    const res = await fetch(`/api/classes/${deleteClass.id}`, { method: "DELETE" })
+    const res = await fetch(`/api/classes/${deleteDialog.selected.id}`, { method: "DELETE" })
     setDeleteLoading(false)
     if (res.status === 204) {
-      setDeleteClass(null)
+      deleteDialog.close()
       router.refresh()
       return
     }
@@ -139,16 +141,18 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
             setCreateOpen(true)
           }}
         >
-          Nouveau cours
+          Ajouter un cours
         </Button>
       </Box>
 
       <Divider sx={{ mb: 2 }} />
 
       {classes.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Aucun cours pour cette saison.
-        </Typography>
+        <Box sx={{ px: 2, py: 1.5, borderRadius: 1, minHeight: 56, display: "flex", alignItems: "center" }}>
+          <Typography variant="body2" color="text.secondary">
+            Aucun cours pour cette saison.
+          </Typography>
+        </Box>
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {classes.map((cls) => (
@@ -197,26 +201,26 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
       </FormDialog>
 
       <FormDialog
-        open={!!editClass}
+        open={!!editDialog.selected}
         title="Modifier le cours"
         submitLabel="Enregistrer"
         loading={editLoading}
         error={editError}
-        onClose={() => setEditClass(null)}
+        onClose={editDialog.close}
         onSubmit={handleEdit}
       >
         <ClassForm form={editForm} onChange={setEditForm} teachers={teachers} />
       </FormDialog>
 
       <ConfirmDialog
-        open={!!deleteClass}
+        open={!!deleteDialog.selected}
         title="Supprimer le cours"
-        message={<>Supprimer le cours «&nbsp;{deleteClass?.name}&nbsp;» ?</>}
+        message={<>Supprimer le cours «&nbsp;{deleteDialog.displaySelected?.name}&nbsp;» ?</>}
         confirmLabel="Supprimer"
         loading={deleteLoading}
         error={deleteError}
         onConfirm={handleDelete}
-        onClose={() => setDeleteClass(null)}
+        onClose={deleteDialog.close}
       />
     </>
   )
