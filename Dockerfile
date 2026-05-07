@@ -30,9 +30,8 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
-# prisma CLI + engines from npm stage (flat node_modules, no pnpm symlink issues)
-COPY --from=prisma-cli --chown=nextjs:nodejs /deps/node_modules/prisma ./node_modules/prisma
-COPY --from=prisma-cli --chown=nextjs:nodejs /deps/node_modules/@prisma ./node_modules/@prisma
+# prisma CLI + all transitive deps from npm stage (flat node_modules, no pnpm symlink issues)
+COPY --from=prisma-cli --chown=nextjs:nodejs /deps/node_modules ./node_modules
 
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
