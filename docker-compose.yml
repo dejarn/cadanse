@@ -24,8 +24,8 @@ services:
       context: .
       dockerfile: Dockerfile
     working_dir: /app/prisma-modules
+    entrypoint: ["node"]
     command:
-      - node
       - node_modules/prisma/build/index.js
       - migrate
       - deploy
