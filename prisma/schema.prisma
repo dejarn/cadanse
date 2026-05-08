@@ -125,7 +125,6 @@ model Act {
   name          String
   classId       String
   showId        String
-  priority      Int?
   fixedPosition Int?
   createdAt     DateTime @default(now())
 

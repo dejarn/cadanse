@@ -119,8 +119,8 @@ Tone: **direct, brief, professional**. No exclamation marks. No over-friendly la
 ### 2. Generate a performance order
 
 1. Navigate to **Shows** → select show → tap "Ordre de passage".
-2. Config panel shows all acts with priority input and lock icon.
-3. Adjust priorities (optional) → tap "Générer".
+2. Config panel shows all acts with lock icon.
+3. Tap "Générer".
 4. Proposed order appears as draggable list.
 5. Drag acts to adjust. Tap lock icon to pin an act at its current position.
 6. Tap "Valider" → order saved, SSE broadcast sent.

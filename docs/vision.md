@@ -48,10 +48,9 @@ Dance teachers manually manage student lists, classes, and shows. Building a per
 The algorithm respects constraints in the following priority order:
 
 1. **Fixed positions** — certain acts are pinned to a specific index (e.g. opening act, closing act).
-2. **Priority** — optional integer, `>= 1`. `1` = as early as possible, higher value = later. Multiple acts can share the same priority. Acts without a priority are unconstrained.
-3. **Maximum spacing** — maximize the number of acts between two appearances of the same student (soft constraint, best-effort).
+2. **Maximum spacing** — maximize the number of acts between two appearances of the same student (soft constraint, best-effort).
 
-When constraints conflict, fixed positions take precedence, then priorities, then spacing.
+When constraints conflict, fixed positions take precedence, then spacing.
 
 ## Active season
 

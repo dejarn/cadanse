@@ -61,7 +61,7 @@ No global state library. Data flows via:
 
 Most complex screen. Fully client-side state until validation.
 
-1. **Config panel** — list of acts with editable priority (number input) and lock toggle (fixed position icon). Values pre-filled from DB on load.
+1. **Config panel** — list of acts with lock toggle (fixed position icon). Values pre-filled from DB on load.
 2. **Generate button** — sends current config to `POST /api/shows/[showId]/order/generate`, displays returned order.
 3. **Order list** — draggable act list (`dnd-kit`). Lock icon per act sets/unsets `fixedPosition` at current index.
 4. **Validate button** — sends `PUT /api/shows/[showId]/order` with final positions + actConfigs. Triggers SSE broadcast.

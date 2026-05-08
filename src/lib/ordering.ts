@@ -2,7 +2,6 @@ import type { Act } from "@prisma/client"
 
 interface ActConfig {
   actId: string
-  priority?: number
   fixedPosition?: number
 }
 
@@ -13,8 +12,7 @@ interface OrderedAct {
 
 /**
  * Generate a performance order respecting:
- * 1. fixedPosition — overrides everything
- * 2. priority (1 = earliest) — lower number plays first
+ * 1. fixedPosition — pins act to a specific slot
  */
 export function generateOrder(
   acts: Act[],
@@ -35,13 +33,6 @@ export function generateOrder(
     }
   }
 
-  // Sort flexible by priority (ascending, nulls last)
-  flexible.sort((a, b) => {
-    const pa = configMap.get(a.id)?.priority ?? a.priority ?? Infinity
-    const pb = configMap.get(b.id)?.priority ?? b.priority ?? Infinity
-    return pa - pb
-  })
-
   // Build result array
   const totalSlots = acts.length
   const result: Array<OrderedAct | null> = Array(totalSlots).fill(null)
@@ -58,7 +49,7 @@ export function generateOrder(
     }
   }
 
-  // Fill remaining slots with flexible acts (in priority order)
+  // Fill remaining slots with flexible acts (in input order)
   let flexIdx = 0
   for (let i = 0; i < totalSlots; i++) {
     if (result[i] === null && flexIdx < flexible.length) {

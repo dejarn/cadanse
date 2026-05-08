@@ -49,7 +49,7 @@ No SWR, no React Query, no global state library.
 
 - **One active season**: `Season.isActive = true` — enforced at app level, no DB constraint. Query active season explicitly; don't assume it exists.
 - **Participation = row existence**: A `Participation` row = student is in the act. No `enabled` flag. Creating an act auto-creates participation rows for all students in its class.
-- **fixedPosition beats priority**: In the ordering algorithm, `Act.fixedPosition` overrides `Act.priority`. Algorithm is best-effort when constraints conflict.
+- **fixedPosition pins acts**: In the ordering algorithm, `Act.fixedPosition` locks an act to a specific position. Unpinned acts flow around them in their current order.
 - **Teacher ≠ User**: Teachers have no app login — pure data entity, separate from `User`.
 - **Class is season-scoped**: Classes must be re-created per season via `seasonId` FK.
 - **Roll call is ephemeral**: `/app/classes/[id]` roll call tab has no save action — informational only.

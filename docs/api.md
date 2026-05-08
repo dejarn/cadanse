@@ -216,7 +216,7 @@ Acts not included in list — use `GET /api/shows/[id]`.
   "seasonId": "...",
   "currentPosition": null,
   "acts": [
-    { "id": "...", "name": "Hip-hop juniors", "classId": "...", "priority": 1, "fixedPosition": null }
+    { "id": "...", "name": "Hip-hop juniors", "classId": "...", "fixedPosition": null }
   ]
 }
 ```
@@ -229,7 +229,7 @@ Acts not included in list — use `GET /api/shows/[id]`.
 |---|---|---|---|
 | `GET` | `/api/shows/[showId]/acts` | List acts for a show | ADMIN |
 | `POST` | `/api/shows/[showId]/acts` | Create act | ADMIN |
-| `PATCH` | `/api/acts/[id]` | Update act (name, priority, fixedPosition) | ADMIN |
+| `PATCH` | `/api/acts/[id]` | Update act (name, fixedPosition) | ADMIN |
 | `DELETE` | `/api/acts/[id]` | Delete act | ADMIN |
 | `GET` | `/api/acts/[id]/participants` | List participating students | ADMIN |
 | `POST` | `/api/acts/[id]/participants` | Add student to act | ADMIN |
@@ -237,7 +237,7 @@ Acts not included in list — use `GET /api/shows/[id]`.
 
 **GET /api/shows/[showId]/acts** response:
 ```json
-[{ "id": "...", "name": "Hip-hop juniors", "classId": "...", "priority": 1, "fixedPosition": null, "createdAt": "..." }]
+[{ "id": "...", "name": "Hip-hop juniors", "classId": "...", "fixedPosition": null, "createdAt": "..." }]
 ```
 
 **GET /api/acts/[id]/participants** response:
@@ -247,16 +247,14 @@ Acts not included in list — use `GET /api/shows/[id]`.
 
 **POST /api/shows/[showId]/acts** body:
 ```json
-{ "name": "Hip-hop juniors", "classId": "...", "priority": 1, "fixedPosition": null }
+{ "name": "Hip-hop juniors", "classId": "...", "fixedPosition": null }
 ```
-
-- `priority`: integer `>= 1` or `null`. `1` = earliest, higher = later. `→ 400` if `< 1`.
 
 - On act creation, `Participation` rows are auto-created for all students enrolled in the act's class.
 
 **PATCH /api/acts/[id]** body (partial):
 ```json
-{ "priority": 2, "fixedPosition": 3 }
+{ "fixedPosition": 3 }
 ```
 
 - Set `fixedPosition: null` to unlock. Corresponds to the lock toggle in the UI.
@@ -302,8 +300,8 @@ Returns empty `positions: []` if no order has been validated yet.
 ```json
 {
   "actConfigs": [
-    { "actId": "...", "priority": 1, "fixedPosition": null },
-    { "actId": "...", "priority": null, "fixedPosition": 0 }
+    { "actId": "...", "fixedPosition": null },
+    { "actId": "...", "fixedPosition": 0 }
   ]
 }
 ```
@@ -318,22 +316,18 @@ Response:
 }
 ```
 
-**PUT /api/shows/[showId]/order** — saves final order to `ActPosition` and persists `actConfigs` back to `Act.priority` / `Act.fixedPosition`. Triggers SSE broadcast.
+**PUT /api/shows/[showId]/order** — saves final order to `ActPosition` and persists `fixedPosition` back to `Act.fixedPosition`. Triggers SSE broadcast.
 
 ```json
 {
   "positions": [
     { "actId": "...", "position": 0 },
     { "actId": "...", "position": 1 }
-  ],
-  "actConfigs": [
-    { "actId": "...", "priority": 1, "fixedPosition": null },
-    { "actId": "...", "priority": null, "fixedPosition": 0 }
   ]
 }
 ```
 
-> On page load, the frontend reads persisted `Act.priority` and `Act.fixedPosition` from DB to initialize the configuration UI (lock icons, priority values). Changes are held in local state until the admin clicks "Validate".
+> On page load, the frontend reads persisted `Act.fixedPosition` from DB to initialize the configuration UI (lock icons). Changes are held in local state until the admin clicks "Validate".
 
 ---
 

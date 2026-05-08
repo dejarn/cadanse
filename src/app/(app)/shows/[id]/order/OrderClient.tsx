@@ -26,8 +26,6 @@ import Divider from "@mui/material/Divider"
 import IconButton from "@mui/material/IconButton"
 import MenuItem from "@mui/material/MenuItem"
 import TextField from "@mui/material/TextField"
-import Chip from "@mui/material/Chip"
-import Popover from "@mui/material/Popover"
 import Tooltip from "@mui/material/Tooltip"
 import Typography from "@mui/material/Typography"
 import AddIcon from "@mui/icons-material/Add"
@@ -56,17 +54,6 @@ interface Props {
 }
 
 const emptyForm = { name: "", classId: "" }
-
-const PRIORITY_TIERS: { value: number | null; label: string; color: string }[] = [
-  { value: 1, label: "Haute", color: "#A85A5A" },
-  { value: 2, label: "Moyenne", color: "#D4A853" },
-  { value: 3, label: "Basse", color: "#6AAB8E" },
-  { value: null, label: "Aucune", color: "#9A9089" },
-]
-
-function getTier(value: number | null) {
-  return PRIORITY_TIERS.find((t) => t.value === value) ?? PRIORITY_TIERS[3]
-}
 
 // Locked acts stay at their indices; unlocked acts flow around them.
 function applyDragWithLocks(
@@ -110,92 +97,16 @@ function applyDragWithLocks(
   return result
 }
 
-function PriorityBadge({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
-  const tier = getTier(value)
-
-  return (
-    <>
-      <Chip
-        label={tier.label}
-        size="small"
-        onClick={(e) => setAnchorEl(e.currentTarget)}
-        sx={{
-          height: 20,
-          fontSize: 10,
-          fontWeight: 600,
-          cursor: "pointer",
-          bgcolor: `${tier.color}18`,
-          color: tier.color,
-          border: "1px solid",
-          borderColor: `${tier.color}66`,
-          letterSpacing: 0.3,
-          "&:hover": { bgcolor: `${tier.color}30` },
-        }}
-      />
-      <Popover
-        open={Boolean(anchorEl)}
-        anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-        transformOrigin={{ vertical: "top", horizontal: "left" }}
-        slotProps={{
-          paper: {
-            sx: {
-              mt: 0.5,
-              p: 0.5,
-              borderRadius: 1.5,
-              minWidth: 120,
-              backgroundImage: "none",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-            },
-          },
-        }}
-      >
-        {PRIORITY_TIERS.map((t) => (
-          <Box
-            key={t.label}
-            onClick={() => {
-              onChange(t.value)
-              setAnchorEl(null)
-            }}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              px: 1,
-              py: 0.75,
-              borderRadius: 1,
-              cursor: "pointer",
-              "&:hover": { bgcolor: "rgba(212,168,83,0.08)" },
-              ...(t.value === value ? { bgcolor: "rgba(212,168,83,0.12)" } : {}),
-            }}
-          >
-            <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: t.color, flexShrink: 0 }} />
-            <Typography variant="caption" sx={{ fontWeight: t.value === value ? 600 : 400 }}>
-              {t.label}
-            </Typography>
-          </Box>
-        ))}
-      </Popover>
-    </>
-  )
-}
-
 function SortableActRow({
   act,
   position,
   isLocked,
-  priority,
   onToggleLock,
-  onPriorityChange,
 }: {
   act: ActWithClass
   position: number
   isLocked: boolean
-  priority: number | null
   onToggleLock: (actId: string) => void
-  onPriorityChange: (actId: string, v: number | null) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: act.id,
@@ -254,7 +165,6 @@ function SortableActRow({
           </Typography>
         </Box>
       </Box>
-      <PriorityBadge value={priority} onChange={(v) => onPriorityChange(act.id, v)} />
     </Box>
   )
 }
@@ -277,7 +187,6 @@ export default function OrderClient({ show, classes }: Props) {
   const [editMode, setEditMode] = useState(false)
   const [localOrder, setLocalOrder] = useState<string[]>([])
   const [lockedIds, setLockedIds] = useState<Set<string>>(new Set())
-  const [localPriorities, setLocalPriorities] = useState<Map<string, number | null>>(new Map())
   const [generateLoading, setGenerateLoading] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [saveLoading, setSaveLoading] = useState(false)
@@ -365,7 +274,6 @@ export default function OrderClient({ show, classes }: Props) {
     const ordered = viewOrder.map((a) => a.id)
     setLocalOrder(ordered)
     setLockedIds(new Set(show.acts.filter((a) => a.fixedPosition != null).map((a) => a.id)))
-    setLocalPriorities(new Map(show.acts.map((a) => [a.id, a.priority ?? null])))
     setGenerateError(null)
     setSaveError(null)
     setEditMode(true)
@@ -373,7 +281,6 @@ export default function OrderClient({ show, classes }: Props) {
 
   function handleCancelEdit() {
     setEditMode(false)
-    setLocalPriorities(new Map())
     setGenerateError(null)
     setSaveError(null)
   }
@@ -383,14 +290,6 @@ export default function OrderClient({ show, classes }: Props) {
       const next = new Set(prev)
       if (next.has(actId)) next.delete(actId)
       else next.add(actId)
-      return next
-    })
-  }
-
-  function handlePriorityChange(actId: string, priority: number | null) {
-    setLocalPriorities((prev) => {
-      const next = new Map(prev)
-      next.set(actId, priority)
       return next
     })
   }
@@ -408,7 +307,6 @@ export default function OrderClient({ show, classes }: Props) {
     setGenerateLoading(true)
     const actConfigs = localOrder.map((actId, index) => ({
       actId,
-      priority: localPriorities.get(actId) ?? undefined,
       fixedPosition: lockedIds.has(actId) ? index : undefined,
     }))
     const res = await fetch(`/api/shows/${show.id}/order/generate`, {
@@ -434,13 +332,10 @@ export default function OrderClient({ show, classes }: Props) {
       .map((actId, index) => {
         const act = actMap.get(actId)!
         const newFP = lockedIds.has(actId) ? index : null
-        const newPriority = localPriorities.get(actId) ?? null
         const fpChanged = act.fixedPosition !== newFP
-        const prioChanged = (act.priority ?? null) !== newPriority
-        if (!fpChanged && !prioChanged) return null
+        if (!fpChanged) return null
         const data: Record<string, unknown> = {}
-        if (fpChanged) data.fixedPosition = newFP
-        if (prioChanged) data.priority = newPriority
+        data.fixedPosition = newFP
         return fetch(`/api/shows/${show.id}/acts/${actId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -573,9 +468,7 @@ export default function OrderClient({ show, classes }: Props) {
                     act={act}
                     position={index + 1}
                     isLocked={lockedIds.has(actId)}
-                    priority={localPriorities.get(actId) ?? null}
                     onToggleLock={toggleLock}
-                    onPriorityChange={handlePriorityChange}
                   />
                 )
               })}

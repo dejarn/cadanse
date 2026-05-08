@@ -137,12 +137,11 @@ Single-school instance. No row-level tenant isolation needed. All admins share f
 | `name` | `String` | |
 | `classId` | `String` (UUID) | FK → `Class` |
 | `showId` | `String` (UUID) | FK → `Show` |
-| `priority` | `Int?` | Optional. `1` = highest (earliest), higher value = lower priority. Must be `>= 1` if set. Shared priority allowed. |
 | `fixedPosition` | `Int?` | Optional. Pins act to a specific 0-indexed position in the order (0 = first). |
 | `createdAt` | `DateTime` | Auto |
 
 - One class can have multiple acts in the same show.
-- `fixedPosition` takes precedence over `priority` in the ordering algorithm.
+- Unpinned acts are ordered by drag-and-drop.
 
 ---
 

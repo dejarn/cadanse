@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id: showId } = await params
   const { actConfigs } = await req.json() as {
-    actConfigs: { actId: string; priority?: number; fixedPosition?: number }[]
+    actConfigs: { actId: string; fixedPosition?: number }[]
   }
 
   const acts = await prisma.act.findMany({
