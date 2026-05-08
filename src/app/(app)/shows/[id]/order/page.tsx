@@ -12,7 +12,7 @@ export default async function OrderPage({ params }: Props) {
     where: { id },
     include: {
       acts: {
-        include: { class: true },
+        include: { class: { include: { teacher: true } } },
         orderBy: { createdAt: "asc" },
       },
       actPositions: { orderBy: { position: "asc" } },
@@ -21,5 +21,10 @@ export default async function OrderPage({ params }: Props) {
 
   if (!show) notFound()
 
-  return <OrderClient show={show} />
+  const classes = await prisma.class.findMany({
+    where: { seasonId: show.seasonId },
+    orderBy: { name: "asc" },
+  })
+
+  return <OrderClient show={show} classes={classes} />
 }

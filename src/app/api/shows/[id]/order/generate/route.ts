@@ -14,7 +14,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const acts = await prisma.act.findMany({
     where: { showId },
-    include: { participations: true },
   })
 
   const order = generateOrder(acts, actConfigs)

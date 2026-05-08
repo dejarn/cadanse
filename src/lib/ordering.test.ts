@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { generateOrder } from "./ordering"
-import type { Act, Participation } from "@prisma/client"
+import type { Act } from "@prisma/client"
 
-function makeAct(id: string, overrides: Partial<Act> = {}): Act & { participations: Participation[] } {
+function makeAct(id: string, overrides: Partial<Act> = {}): Act {
   return {
     id,
     name: `Act ${id}`,
@@ -11,7 +11,6 @@ function makeAct(id: string, overrides: Partial<Act> = {}): Act & { participatio
     priority: null,
     fixedPosition: null,
     createdAt: new Date(),
-    participations: [],
     ...overrides,
   }
 }

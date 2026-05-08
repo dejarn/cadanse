@@ -70,8 +70,8 @@ model Student {
   lastName  String
   createdAt DateTime @default(now())
 
-  enrollments    StudentClass[]
-  participations Participation[]
+  enrollments        StudentClass[]
+  showParticipations ShowParticipation[]
 
   @@map("students")
 }
@@ -111,9 +111,10 @@ model Show {
   currentPosition Int?
   createdAt       DateTime  @default(now())
 
-  season      Season        @relation(fields: [seasonId], references: [id])
-  acts        Act[]
-  actPositions ActPosition[]
+  season             Season              @relation(fields: [seasonId], references: [id])
+  acts               Act[]
+  actPositions       ActPosition[]
+  showParticipations ShowParticipation[]
 
   @@map("shows")
 }
@@ -127,23 +128,22 @@ model Act {
   fixedPosition Int?
   createdAt     DateTime @default(now())
 
-  class          Class           @relation(fields: [classId], references: [id])
-  show           Show            @relation(fields: [showId], references: [id], onDelete: Cascade)
-  participations Participation[]
-  actPositions   ActPosition[]
+  class        Class         @relation(fields: [classId], references: [id])
+  show         Show          @relation(fields: [showId], references: [id], onDelete: Cascade)
+  actPositions ActPosition[]
 
   @@map("acts")
 }
 
-model Participation {
+model ShowParticipation {
+  showId    String
   studentId String
-  actId     String
 
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  act       Act     @relation(fields: [actId], references: [id], onDelete: Cascade)
+  show    Show    @relation(fields: [showId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@id([studentId, actId])
-  @@map("participations")
+  @@id([showId, studentId])
+  @@map("show_participations")
 }
 
 model ActPosition {

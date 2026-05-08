@@ -1,4 +1,4 @@
-import type { Act, Participation } from "@prisma/client"
+import type { Act } from "@prisma/client"
 
 interface ActConfig {
   actId: string
@@ -11,22 +11,19 @@ interface OrderedAct {
   position: number
 }
 
-type ActWithParticipations = Act & { participations: Participation[] }
-
 /**
  * Generate a performance order respecting:
  * 1. fixedPosition — overrides everything
  * 2. priority (1 = earliest) — lower number plays first
- * 3. Max spacing — soft constraint maximizing time between acts sharing a student
  */
 export function generateOrder(
-  acts: ActWithParticipations[],
+  acts: Act[],
   configs: ActConfig[],
 ): OrderedAct[] {
   const configMap = new Map(configs.map((c) => [c.actId, c]))
 
-  const fixed: Array<{ act: ActWithParticipations; position: number }> = []
-  const flexible: ActWithParticipations[] = []
+  const fixed: Array<{ act: Act; position: number }> = []
+  const flexible: Act[] = []
 
   for (const act of acts) {
     const config = configMap.get(act.id)

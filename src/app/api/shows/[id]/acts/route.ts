@@ -25,17 +25,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id: showId } = await params
   const { name, classId, priority, fixedPosition } = await req.json()
 
-  // Create act + auto-create participation rows for all enrolled students
-  const enrollments = await prisma.studentClass.findMany({ where: { classId } })
-
-  const act = await prisma.$transaction(async (tx) => {
-    const newAct = await tx.act.create({
-      data: { name, classId, showId, priority, fixedPosition },
-    })
-    await tx.participation.createMany({
-      data: enrollments.map((e) => ({ studentId: e.studentId, actId: newAct.id })),
-    })
-    return newAct
+  const act = await prisma.act.create({
+    data: { name, classId, showId, priority, fixedPosition },
   })
 
   return NextResponse.json({ data: act }, { status: 201 })

@@ -15,6 +15,16 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { firstName, lastName } = await req.json()
-  const student = await prisma.student.create({ data: { firstName, lastName } })
+
+  const shows = await prisma.show.findMany({ select: { id: true } })
+
+  const student = await prisma.$transaction(async (tx) => {
+    const newStudent = await tx.student.create({ data: { firstName, lastName } })
+    await tx.showParticipation.createMany({
+      data: shows.map((s) => ({ showId: s.id, studentId: newStudent.id })),
+    })
+    return newStudent
+  })
+
   return NextResponse.json({ data: student }, { status: 201 })
 }

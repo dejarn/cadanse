@@ -13,10 +13,7 @@ export default async function ShowDetailPage({ params }: Props) {
     where: { id },
     include: {
       acts: {
-        include: {
-          class: true,
-          participations: { include: { student: true } },
-        },
+        include: { class: true },
         orderBy: { createdAt: "asc" },
       },
     },

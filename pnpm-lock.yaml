@@ -47,6 +47,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.3
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       next:
         specifier: ^16.2.5
         version: 16.2.5(@babel/core@7.29.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
