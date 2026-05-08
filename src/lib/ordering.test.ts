@@ -9,8 +9,9 @@ function makeAct(id: string, overrides: Partial<Act> = {}): Act {
     classId: "class-1",
     showId: "show-1",
     createdAt: new Date(),
+    fixedPosition: null,
     ...overrides,
-  }
+  } as Act
 }
 
 describe("generateOrder", () => {

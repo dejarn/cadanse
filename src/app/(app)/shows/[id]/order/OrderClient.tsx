@@ -437,7 +437,7 @@ export default function OrderClient({ show, classes }: Props) {
                 onClick={handleEnterEdit}
                 disabled={show.acts.length === 0}
               >
-                Modifier l'ordre
+                Modifier l&apos;ordre
               </Button>
             </>
           )}
