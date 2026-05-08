@@ -31,6 +31,7 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=build --chown=nextjs:nodejs /app/prisma.config.ts ./
 # prisma CLI in its own node_modules tree so ESM resolution works (NODE_PATH doesn't work for ESM)
 COPY --from=prisma-cli --chown=nextjs:nodejs /deps/node_modules ./prisma-modules/node_modules
 

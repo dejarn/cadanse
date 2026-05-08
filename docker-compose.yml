@@ -23,10 +23,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    working_dir: /app/prisma-modules
+    working_dir: /app
     entrypoint: ["sh", "-c"]
     command:
-      - "node node_modules/prisma/build/index.js migrate deploy --schema=/app/prisma/schema.prisma"
+      - "node prisma-modules/node_modules/prisma/build/index.js migrate deploy"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
