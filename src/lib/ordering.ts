@@ -46,10 +46,15 @@ export function generateOrder(
   const totalSlots = acts.length
   const result: Array<OrderedAct | null> = Array(totalSlots).fill(null)
 
-  // Place fixed first
+  // Place fixed first (clamp out-of-range positions)
   for (const { act, position } of fixed) {
-    if (position < totalSlots) {
-      result[position] = { actId: act.id, position }
+    const clamped = Math.min(position, totalSlots - 1)
+    if (result[clamped] === null) {
+      result[clamped] = { actId: act.id, position: clamped }
+    } else {
+      // Collision — find next free slot
+      const freeIdx = result.indexOf(null)
+      if (freeIdx !== -1) result[freeIdx] = { actId: act.id, position: freeIdx }
     }
   }
 
