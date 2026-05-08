@@ -1,26 +1,48 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import Alert from "@mui/material/Alert"
 import Box from "@mui/material/Box"
-import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
+import CircularProgress from "@mui/material/CircularProgress"
 import Divider from "@mui/material/Divider"
 import IconButton from "@mui/material/IconButton"
 import MenuItem from "@mui/material/MenuItem"
 import TextField from "@mui/material/TextField"
 import Tooltip from "@mui/material/Tooltip"
+import Typography from "@mui/material/Typography"
 import AddIcon from "@mui/icons-material/Add"
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh"
 import DeleteIcon from "@mui/icons-material/Delete"
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator"
+import EditIcon from "@mui/icons-material/Edit"
 import GroupIcon from "@mui/icons-material/Group"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import FormDialog from "@/components/FormDialog"
 import { useEntityDialog } from "@/hooks/useEntityDialog"
 import type { Act, ActPosition, Class, Show, Teacher } from "@prisma/client"
 
+type ActWithClass = Act & { class: Class & { teacher: Teacher } }
+
 type ShowWithActs = Show & {
-  acts: (Act & { class: Class & { teacher: Teacher } })[]
+  acts: ActWithClass[]
   actPositions: ActPosition[]
 }
 
@@ -31,19 +53,78 @@ interface Props {
 
 const emptyForm = { name: "", classId: "" }
 
+function SortableActRow({ act, position }: { act: ActWithClass; position: number }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: act.id })
+
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        px: 2,
+        py: 1.5,
+        borderRadius: 1,
+        opacity: isDragging ? 0.4 : 1,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        bgcolor: isDragging ? "rgba(212,168,83,0.08)" : "transparent",
+        "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 20, textAlign: "right" }}>
+          {position}.
+        </Typography>
+        <Box {...attributes} {...listeners} sx={{ display: "flex", color: "text.secondary", cursor: "grab" }}>
+          <DragIndicatorIcon fontSize="small" />
+        </Box>
+        <Box>
+          <Typography variant="body1">{act.name}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {act.class.name} · {act.class.schedule} · {act.class.teacher.firstName} {act.class.teacher.lastName}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  )
+}
+
 export default function OrderClient({ show, classes }: Props) {
   const router = useRouter()
 
+  // ---- Create act ----
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyForm)
   const [createError, setCreateError] = useState<string | null>(null)
   const [createLoading, setCreateLoading] = useState(false)
 
+  // ---- Delete act ----
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const deleteDialog = useEntityDialog(show.acts)
 
-  function openDelete(act: Act & { class: Class & { teacher: Teacher } }) {
+  // ---- Order mode ----
+  const [editMode, setEditMode] = useState(false)
+  const [localOrder, setLocalOrder] = useState<string[]>([])
+  const [generateLoading, setGenerateLoading] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // ---- Derived ----
+  const actMap = useMemo(() => new Map(show.acts.map((a) => [a.id, a])), [show.acts])
+
+  const viewOrder = useMemo(() => {
+    if (show.actPositions.length === 0) return show.acts
+    const posMap = new Map(show.actPositions.map((p) => [p.actId, p.position]))
+    return [...show.acts].sort((a, b) => (posMap.get(a.id) ?? Infinity) - (posMap.get(b.id) ?? Infinity))
+  }, [show.acts, show.actPositions])
+
+  const sensors = useSensors(useSensor(PointerSensor))
+
+  // ---- Handlers ----
+  function openDelete(act: ActWithClass) {
     deleteDialog.open(act)
     setDeleteError(null)
   }
@@ -83,6 +164,66 @@ export default function OrderClient({ show, classes }: Props) {
     setCreateError(data.error ?? "Une erreur est survenue.")
   }
 
+  function handleEnterEdit() {
+    setLocalOrder(viewOrder.map((a) => a.id))
+    setGenerateError(null)
+    setSaveError(null)
+    setEditMode(true)
+  }
+
+  function handleCancelEdit() {
+    setEditMode(false)
+    setGenerateError(null)
+    setSaveError(null)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setLocalOrder((prev) => {
+      const oldIndex = prev.indexOf(active.id as string)
+      const newIndex = prev.indexOf(over.id as string)
+      return arrayMove(prev, oldIndex, newIndex)
+    })
+  }
+
+  async function handleGenerate() {
+    setGenerateError(null)
+    setGenerateLoading(true)
+    const res = await fetch(`/api/shows/${show.id}/order/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actConfigs: [] }),
+    })
+    setGenerateLoading(false)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setGenerateError(data.error ?? "Une erreur est survenue.")
+      return
+    }
+    const { data } = (await res.json()) as { data: { actId: string; position: number }[] }
+    setLocalOrder([...data].sort((a, b) => a.position - b.position).map((p) => p.actId))
+  }
+
+  async function handleSave() {
+    setSaveError(null)
+    setSaveLoading(true)
+    const positions = localOrder.map((actId, index) => ({ actId, position: index }))
+    const res = await fetch(`/api/shows/${show.id}/order`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ positions }),
+    })
+    setSaveLoading(false)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setSaveError(data.error ?? "Une erreur est survenue.")
+      return
+    }
+    setEditMode(false)
+    router.refresh()
+  }
+
   return (
     <>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
@@ -94,32 +235,78 @@ export default function OrderClient({ show, classes }: Props) {
             {show.name} · {show.acts.length} tableau{show.acts.length !== 1 ? "x" : ""}
           </Typography>
         </Box>
+
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button
-            component={Link}
-            href={`/shows/${show.id}/participants`}
-            size="small"
-            variant="outlined"
-            startIcon={<GroupIcon />}
-          >
-            Participants
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setCreateForm(emptyForm)
-              setCreateError(null)
-              setCreateOpen(true)
-            }}
-          >
-            Ajouter un tableau
-          </Button>
+          {editMode ? (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={generateLoading ? <CircularProgress size={14} /> : <AutoFixHighIcon />}
+                onClick={handleGenerate}
+                disabled={generateLoading || saveLoading}
+              >
+                Générer automatiquement
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleCancelEdit}
+                disabled={saveLoading}
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleSave}
+                disabled={saveLoading}
+                startIcon={saveLoading ? <CircularProgress size={14} /> : undefined}
+              >
+                Valider
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                component={Link}
+                href={`/shows/${show.id}/participants`}
+                size="small"
+                variant="outlined"
+                startIcon={<GroupIcon />}
+              >
+                Participants
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setCreateForm(emptyForm)
+                  setCreateError(null)
+                  setCreateOpen(true)
+                }}
+              >
+                Ajouter un tableau
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditIcon />}
+                onClick={handleEnterEdit}
+                disabled={show.acts.length === 0}
+              >
+                Modifier l'ordre
+              </Button>
+            </>
+          )}
         </Box>
       </Box>
 
       <Divider sx={{ mb: 2 }} />
+
+      {generateError && <Alert severity="error" sx={{ mb: 2 }}>{generateError}</Alert>}
+      {saveError && <Alert severity="error" sx={{ mb: 2 }}>{saveError}</Alert>}
 
       {show.acts.length === 0 ? (
         <Box sx={{ px: 2, py: 1.5, borderRadius: 1, minHeight: 56, display: "flex", alignItems: "center" }}>
@@ -127,9 +314,21 @@ export default function OrderClient({ show, classes }: Props) {
             Aucun tableau pour ce spectacle.
           </Typography>
         </Box>
+      ) : editMode ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={localOrder} strategy={verticalListSortingStrategy}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {localOrder.map((actId, index) => {
+                const act = actMap.get(actId)
+                if (!act) return null
+                return <SortableActRow key={actId} act={act} position={index + 1} />
+              })}
+            </Box>
+          </SortableContext>
+        </DndContext>
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {show.acts.map((act) => (
+          {viewOrder.map((act, index) => (
             <Box
               key={act.id}
               sx={{
@@ -142,11 +341,18 @@ export default function OrderClient({ show, classes }: Props) {
                 "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
               }}
             >
-              <Box>
-                <Typography variant="body1">{act.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {act.class.name} · {act.class.schedule} · {act.class.teacher.firstName} {act.class.teacher.lastName}
-                </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                {show.actPositions.length > 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ minWidth: 20, textAlign: "right" }}>
+                    {index + 1}.
+                  </Typography>
+                )}
+                <Box>
+                  <Typography variant="body1">{act.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {act.class.name} · {act.class.schedule} · {act.class.teacher.firstName} {act.class.teacher.lastName}
+                  </Typography>
+                </Box>
               </Box>
               <Box sx={{ display: "flex", gap: 1 }}>
                 <Tooltip title="Supprimer">

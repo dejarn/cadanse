@@ -17,7 +17,7 @@ RUN pnpm build
 FROM node:22-alpine AS prisma-cli
 WORKDIR /deps
 COPY package.json ./
-RUN node -e "const p=require('./package.json');const v=p.devDependencies?.prisma||p.dependencies?.prisma||'latest';const dv=p.devDependencies?.dotenv||p.dependencies?.dotenv||'latest';require('fs').writeFileSync('package.json',JSON.stringify({dependencies:{prisma:v,dotenv:dv}}))" && \
+RUN node -e "const p=require('./package.json');const v=p.devDependencies?.prisma||p.dependencies?.prisma||'latest';require('fs').writeFileSync('package.json',JSON.stringify({dependencies:{prisma:v}}))" && \
     npm install
 
 FROM base AS runner
@@ -30,7 +30,6 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=build --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 # prisma CLI in its own node_modules tree so ESM resolution works (NODE_PATH doesn't work for ESM)
 COPY --from=prisma-cli --chown=nextjs:nodejs /deps/node_modules ./prisma-modules/node_modules
 
