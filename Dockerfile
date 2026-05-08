@@ -10,7 +10,7 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN DATABASE_URL="postgresql://x:x@localhost:5432/x" pnpm prisma generate
+RUN pnpm prisma generate
 RUN pnpm build
 
 # npm resolves @prisma/engines into flat node_modules (no pnpm symlinks)
