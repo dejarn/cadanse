@@ -13,9 +13,9 @@ import {
 } from "@dnd-kit/core"
 import {
   SortableContext,
-  verticalListSortingStrategy,
   arrayMove,
   useSortable,
+  type SortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import Alert from "@mui/material/Alert"
@@ -34,6 +34,8 @@ import DeleteIcon from "@mui/icons-material/Delete"
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator"
 import EditIcon from "@mui/icons-material/Edit"
 import GroupIcon from "@mui/icons-material/Group"
+import LockIcon from "@mui/icons-material/Lock"
+import LockOpenIcon from "@mui/icons-material/LockOpen"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import FormDialog from "@/components/FormDialog"
 import { useEntityDialog } from "@/hooks/useEntityDialog"
@@ -53,8 +55,64 @@ interface Props {
 
 const emptyForm = { name: "", classId: "" }
 
-function SortableActRow({ act, position }: { act: ActWithClass; position: number }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: act.id })
+// Locked acts stay at their indices; unlocked acts flow around them.
+function applyDragWithLocks(
+  prev: string[],
+  activeId: string,
+  overId: string,
+  lockedIds: Set<string>,
+): string[] {
+  if (lockedIds.has(activeId)) return prev
+
+  const lockedPositions = new Map<string, number>()
+  for (const id of lockedIds) lockedPositions.set(id, prev.indexOf(id))
+
+  const unlocked = prev.filter((id) => !lockedIds.has(id))
+  const oldIdx = unlocked.indexOf(activeId)
+
+  let newIdx: number
+  if (lockedIds.has(overId)) {
+    const activeFullIdx = prev.indexOf(activeId)
+    const overFullIdx = prev.indexOf(overId)
+    const rest = unlocked.filter((id) => id !== activeId)
+    if (activeFullIdx < overFullIdx) {
+      newIdx = rest.filter((id) => prev.indexOf(id) < overFullIdx).length
+    } else {
+      newIdx = rest.filter((id) => prev.indexOf(id) <= overFullIdx).length
+    }
+  } else {
+    newIdx = unlocked.indexOf(overId)
+  }
+
+  if (oldIdx === newIdx) return prev
+
+  const newUnlocked = arrayMove(unlocked, oldIdx, newIdx)
+
+  const result = new Array<string>(prev.length)
+  for (const [id, idx] of lockedPositions) result[idx] = id
+  let ui = 0
+  for (let i = 0; i < result.length; i++) {
+    if (!result[i]) result[i] = newUnlocked[ui++]
+  }
+  return result
+}
+
+function SortableActRow({
+  act,
+  position,
+  isLocked,
+  onToggleLock,
+}: {
+  act: ActWithClass
+  position: number
+  isLocked: boolean
+  onToggleLock: (actId: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: act.id,
+    disabled: isLocked,
+    animateLayoutChanges: () => false,
+  })
 
   return (
     <Box
@@ -62,21 +120,42 @@ function SortableActRow({ act, position }: { act: ActWithClass; position: number
       sx={{
         display: "flex",
         alignItems: "center",
+        justifyContent: "space-between",
         px: 2,
         py: 1.5,
         borderRadius: 1,
         opacity: isDragging ? 0.4 : 1,
-        transform: CSS.Transform.toString(transform),
-        transition,
+        transform: isLocked ? undefined : CSS.Transform.toString(transform),
+        transition: isLocked ? undefined : transition,
         bgcolor: isDragging ? "rgba(212,168,83,0.08)" : "transparent",
-        "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
+        "&:hover": { bgcolor: isLocked ? "transparent" : "rgba(212,168,83,0.05)" },
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Tooltip title={isLocked ? "Déverrouiller la position" : "Verrouiller la position"}>
+          <IconButton
+            size="small"
+            onClick={() => onToggleLock(act.id)}
+            sx={{
+              color: isLocked ? "primary.main" : "text.disabled",
+              "&:hover": { color: isLocked ? "primary.light" : "text.secondary" },
+            }}
+          >
+            {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
         <Typography variant="body2" color="text.secondary" sx={{ minWidth: 20, textAlign: "right" }}>
           {position}.
         </Typography>
-        <Box {...attributes} {...listeners} sx={{ display: "flex", color: "text.secondary", cursor: "grab" }}>
+        <Box
+          {...attributes}
+          {...listeners}
+          sx={{
+            display: "flex",
+            color: isLocked ? "text.disabled" : "text.secondary",
+            cursor: isLocked ? "not-allowed" : "grab",
+          }}
+        >
           <DragIndicatorIcon fontSize="small" />
         </Box>
         <Box>
@@ -107,6 +186,7 @@ export default function OrderClient({ show, classes }: Props) {
   // ---- Order mode ----
   const [editMode, setEditMode] = useState(false)
   const [localOrder, setLocalOrder] = useState<string[]>([])
+  const [lockedIds, setLockedIds] = useState<Set<string>>(new Set())
   const [generateLoading, setGenerateLoading] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [saveLoading, setSaveLoading] = useState(false)
@@ -122,6 +202,32 @@ export default function OrderClient({ show, classes }: Props) {
   }, [show.acts, show.actPositions])
 
   const sensors = useSensors(useSensor(PointerSensor))
+
+  const lockedSortingStrategy = useMemo<SortingStrategy>(
+    () =>
+      ({ activeIndex, overIndex, index, rects }) => {
+        if (index === activeIndex) return null
+
+        const activeId = localOrder[activeIndex]
+        const overId = localOrder[overIndex]
+        if (!activeId || !overId) return { x: 0, y: 0, scaleX: 1, scaleY: 1 }
+
+        const finalOrder = applyDragWithLocks(localOrder, activeId, overId, lockedIds)
+        const finalPos = finalOrder.indexOf(localOrder[index])
+
+        if (finalPos === index) return { x: 0, y: 0, scaleX: 1, scaleY: 1 }
+
+        let y = 0
+        if (finalPos > index) {
+          for (let i = index + 1; i <= finalPos; i++) y += rects[i]?.height ?? 0
+        } else {
+          for (let i = finalPos; i < index; i++) y -= rects[i]?.height ?? 0
+        }
+
+        return { x: 0, y, scaleX: 1, scaleY: 1 }
+      },
+    [localOrder, lockedIds],
+  )
 
   // ---- Handlers ----
   function openDelete(act: ActWithClass) {
@@ -165,7 +271,9 @@ export default function OrderClient({ show, classes }: Props) {
   }
 
   function handleEnterEdit() {
-    setLocalOrder(viewOrder.map((a) => a.id))
+    const ordered = viewOrder.map((a) => a.id)
+    setLocalOrder(ordered)
+    setLockedIds(new Set(show.acts.filter((a) => a.fixedPosition != null).map((a) => a.id)))
     setGenerateError(null)
     setSaveError(null)
     setEditMode(true)
@@ -177,14 +285,21 @@ export default function OrderClient({ show, classes }: Props) {
     setSaveError(null)
   }
 
+  function toggleLock(actId: string) {
+    setLockedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(actId)) next.delete(actId)
+      else next.add(actId)
+      return next
+    })
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    setLocalOrder((prev) => {
-      const oldIndex = prev.indexOf(active.id as string)
-      const newIndex = prev.indexOf(over.id as string)
-      return arrayMove(prev, oldIndex, newIndex)
-    })
+    setLocalOrder((prev) =>
+      applyDragWithLocks(prev, active.id as string, over.id as string, lockedIds)
+    )
   }
 
   async function handleGenerate() {
@@ -208,18 +323,44 @@ export default function OrderClient({ show, classes }: Props) {
   async function handleSave() {
     setSaveError(null)
     setSaveLoading(true)
-    const positions = localOrder.map((actId, index) => ({ actId, position: index }))
-    const res = await fetch(`/api/shows/${show.id}/order`, {
+
+    const patches = localOrder
+      .map((actId, index) => {
+        const act = actMap.get(actId)!
+        const newFP = lockedIds.has(actId) ? index : null
+        if (act.fixedPosition === newFP) return null
+        return fetch(`/api/shows/${show.id}/acts/${actId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fixedPosition: newFP }),
+        })
+      })
+      .filter(Boolean) as Promise<Response>[]
+
+    const orderFetch = fetch(`/api/shows/${show.id}/order`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ positions }),
+      body: JSON.stringify({ positions: localOrder.map((actId, i) => ({ actId, position: i })) }),
     })
-    setSaveLoading(false)
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setSaveError(data.error ?? "Une erreur est survenue.")
+
+    let results: Response[]
+    try {
+      results = await Promise.all([...patches, orderFetch])
+    } catch {
+      setSaveError("Une erreur est survenue.")
+      setSaveLoading(false)
       return
     }
+
+    const failed = results.find((r) => !r.ok)
+    if (failed) {
+      const data = await failed.json().catch(() => ({}))
+      setSaveError(data.error ?? "Une erreur est survenue.")
+      setSaveLoading(false)
+      return
+    }
+
+    setSaveLoading(false)
     setEditMode(false)
     router.refresh()
   }
@@ -246,14 +387,9 @@ export default function OrderClient({ show, classes }: Props) {
                 onClick={handleGenerate}
                 disabled={generateLoading || saveLoading}
               >
-                Générer automatiquement
+                Générer
               </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleCancelEdit}
-                disabled={saveLoading}
-              >
+              <Button variant="outlined" size="small" onClick={handleCancelEdit} disabled={saveLoading}>
                 Annuler
               </Button>
               <Button
@@ -268,27 +404,25 @@ export default function OrderClient({ show, classes }: Props) {
             </>
           ) : (
             <>
-              <Button
-                component={Link}
-                href={`/shows/${show.id}/participants`}
-                size="small"
-                variant="outlined"
-                startIcon={<GroupIcon />}
-              >
-                Participants
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  setCreateForm(emptyForm)
-                  setCreateError(null)
-                  setCreateOpen(true)
-                }}
-              >
-                Ajouter un tableau
-              </Button>
+              <Tooltip title="Participants">
+                <span>
+                  <IconButton component={Link} href={`/shows/${show.id}/participants`} size="small">
+                    <GroupIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Ajouter un tableau">
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    setCreateForm(emptyForm)
+                    setCreateError(null)
+                    setCreateOpen(true)
+                  }}
+                >
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
               <Button
                 variant="outlined"
                 size="small"
@@ -316,12 +450,20 @@ export default function OrderClient({ show, classes }: Props) {
         </Box>
       ) : editMode ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={localOrder} strategy={verticalListSortingStrategy}>
+          <SortableContext items={localOrder} strategy={lockedSortingStrategy}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
               {localOrder.map((actId, index) => {
                 const act = actMap.get(actId)
                 if (!act) return null
-                return <SortableActRow key={actId} act={act} position={index + 1} />
+                return (
+                  <SortableActRow
+                    key={actId}
+                    act={act}
+                    position={index + 1}
+                    isLocked={lockedIds.has(actId)}
+                    onToggleLock={toggleLock}
+                  />
+                )
               })}
             </Box>
           </SortableContext>
@@ -350,7 +492,8 @@ export default function OrderClient({ show, classes }: Props) {
                 <Box>
                   <Typography variant="body1">{act.name}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {act.class.name} · {act.class.schedule} · {act.class.teacher.firstName} {act.class.teacher.lastName}
+                    {act.class.name} · {act.class.schedule} · {act.class.teacher.firstName}{" "}
+                    {act.class.teacher.lastName}
                   </Typography>
                 </Box>
               </Box>
