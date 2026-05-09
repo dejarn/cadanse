@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
 import Chip from "@mui/material/Chip"
@@ -10,6 +10,8 @@ interface Act {
   id: string
   name: string
   position: number
+  className: string
+  teacherName: string
 }
 
 interface SSEPayload {
@@ -27,6 +29,8 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
   const [acts, setActs] = useState<Act[]>(initialActs)
   const [currentPosition, setCurrentPosition] = useState<number | null>(initialPosition)
   const [connected, setConnected] = useState(false)
+  const [flash, setFlash] = useState(false)
+  const initialized = useRef(false)
 
   useEffect(() => {
     const es = new EventSource(`/api/public/shows/${slug}/stream`)
@@ -38,6 +42,13 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
       const payload: SSEPayload = JSON.parse(event.data)
       setActs(payload.acts)
       setCurrentPosition(payload.currentPosition)
+
+      if (initialized.current) {
+        setFlash(true)
+        setTimeout(() => setFlash(false), 350)
+      } else {
+        initialized.current = true
+      }
     }
 
     return () => {
@@ -48,53 +59,86 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        {connected ? (
-          <Chip
-            icon={<FiberManualRecordIcon sx={{ fontSize: 10, color: "success.main" }} />}
-            label="En direct"
-            size="small"
-            variant="outlined"
-            sx={{ borderColor: "success.main", color: "success.main" }}
-          />
-        ) : (
-          <Chip
-            label="Connexion perdue — actualisation automatique…"
-            size="small"
-            variant="outlined"
-            color="error"
-          />
-        )}
-      </Box>
+      {currentPosition !== null && (
+        <Box sx={{ mb: 3 }}>
+          {connected ? (
+            <Chip
+              icon={<FiberManualRecordIcon sx={{ fontSize: 10, color: "success.main" }} />}
+              label="En direct"
+              size="small"
+              variant="outlined"
+              sx={{ borderColor: "success.main", color: "success.main" }}
+            />
+          ) : (
+            <Chip
+              label="Connexion perdue — actualisation automatique…"
+              size="small"
+              variant="outlined"
+              color="error"
+            />
+          )}
+        </Box>
+      )}
 
       {acts.length === 0 ? (
-        <Typography color="text.secondary">Ordre de passage non disponible.</Typography>
+        <Typography color="text.secondary">Pas encore disponible.</Typography>
       ) : (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {acts.map((act) => (
-            <Box
-              key={act.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-                opacity: currentPosition !== null && act.position < currentPosition ? 0.4 : 1,
-              }}
-            >
-              <Typography
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            opacity: flash ? 0.7 : 1,
+            transition: "opacity 350ms ease",
+          }}
+        >
+          {acts.map((act) => {
+            const isCurrent = currentPosition !== null && act.position === currentPosition
+            const isPast = currentPosition !== null && act.position < currentPosition
+            return (
+              <Box
+                key={act.id}
                 sx={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: "2rem",
-                  color: "primary.main",
-                  minWidth: 48,
-                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  opacity: isPast ? 0.3 : 1,
+                  borderLeft: isCurrent ? "3px solid #D4A853" : "3px solid transparent",
+                  pl: isCurrent ? 1.5 : 0,
+                  transition: "all 300ms ease",
                 }}
               >
-                {String(act.position + 1).padStart(2, "0")}
-              </Typography>
-              <Typography variant="body1">{act.name}</Typography>
-            </Box>
-          ))}
+                <Typography
+                  sx={{
+                    fontFamily: "'Cormorant Garamond', serif",
+                    fontSize: "2rem",
+                    color: isCurrent ? "primary.main" : "text.secondary",
+                    minWidth: 48,
+                    lineHeight: 1,
+                    transition: "color 300ms ease",
+                  }}
+                >
+                  {String(act.position + 1).padStart(2, "0")}
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+                  <Box>
+                    <Typography variant="body1">{act.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {act.className} · {act.teacherName}
+                    </Typography>
+                  </Box>
+                  {isCurrent && (
+                    <Chip
+                      label="En cours"
+                      size="small"
+                      variant="outlined"
+                      sx={{ borderColor: "primary.main", color: "primary.main" }}
+                    />
+                  )}
+                </Box>
+              </Box>
+            )
+          })}
         </Box>
       )}
     </Box>

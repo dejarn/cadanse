@@ -1,57 +1,59 @@
 import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { slugify } from "@/lib/slugify"
+import { onShow, type ShowPayload } from "@/lib/sse-emitter"
 
-function slugify(name: string, seasonLabel: string): string {
-  const raw = `${name}-${seasonLabel}`
-  return raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-}
-
-// Simple SSE stub: polls DB every 5s and pushes current state.
-// Replace with event-driven broadcast in production.
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+
+  const shows = await prisma.show.findMany({
+    include: {
+      season: true,
+      actPositions: {
+        include: { act: { include: { class: { include: { teacher: true } } } } },
+        orderBy: { position: "asc" },
+      },
+    },
+  })
+
+  const show = shows.find((s) => slugify(s.name, s.season.label) === slug)
+  if (!show) {
+    return new Response("Not found", { status: 404 })
+  }
+
+  const initialPayload: ShowPayload = {
+    acts: show.actPositions.map((ap) => ({
+      id: ap.actId,
+      name: ap.act.name,
+      position: ap.position,
+      className: ap.act.class.name,
+      teacherName: `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`,
+    })),
+    currentPosition: show.currentPosition,
+  }
 
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
-    async start(controller) {
-      async function push() {
-        const shows = await prisma.show.findMany({
-          include: {
-            season: true,
-            actPositions: {
-              include: { act: true },
-              orderBy: { position: "asc" },
-            },
-          },
-        })
+    start(controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialPayload)}\n\n`))
 
-        const show = shows.find((s) => slugify(s.name, s.season.label) === slug)
-        if (!show) return
-
-        const payload = {
-          acts: show.actPositions.map((ap) => ({
-            id: ap.actId,
-            name: ap.act.name,
-            position: ap.position,
-          })),
-          currentPosition: show.currentPosition,
+      const unsub = onShow(show.id, (payload) => {
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+        } catch {
+          // controller already closed
         }
+      })
 
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
-      }
-
-      await push()
-      const interval = setInterval(push, 5000)
-
-      // Cleanup when client disconnects — interval cleared by GC in stub
-      // In production, wire to AbortSignal from req.signal
-      void interval
+      req.signal.addEventListener("abort", () => {
+        unsub()
+        try {
+          controller.close()
+        } catch {
+          // already closed
+        }
+      })
     },
   })
 

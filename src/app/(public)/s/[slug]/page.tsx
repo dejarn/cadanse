@@ -2,17 +2,8 @@ import { notFound } from "next/navigation"
 import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
 import { prisma } from "@/lib/prisma"
+import { slugify } from "@/lib/slugify"
 import ShowPublicClient from "./ShowPublicClient"
-
-function slugify(name: string, seasonLabel: string): string {
-  const raw = `${name}-${seasonLabel}`
-  return raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-}
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -25,7 +16,7 @@ export default async function PublicShowPage({ params }: Props) {
     include: {
       season: true,
       actPositions: {
-        include: { act: true },
+        include: { act: { include: { class: { include: { teacher: true } } } } },
         orderBy: { position: "asc" },
       },
     },
@@ -38,12 +29,14 @@ export default async function PublicShowPage({ params }: Props) {
     id: ap.actId,
     name: ap.act.name,
     position: ap.position,
+    className: ap.act.class.name,
+    teacherName: `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`,
   }))
 
   return (
     <Box sx={{ maxWidth: 600, mx: "auto" }}>
       <Typography
-        variant="h2"
+        variant="h3"
         sx={{ fontFamily: "'Cormorant Garamond', serif", color: "primary.main", mb: 1 }}
       >
         {show.name}

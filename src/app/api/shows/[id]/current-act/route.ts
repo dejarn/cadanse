@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { broadcastShow } from "@/lib/sse-emitter"
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -14,12 +15,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: { currentPosition },
     include: {
       actPositions: {
-        include: { act: true },
+        include: { act: { include: { class: { include: { teacher: true } } } } },
         orderBy: { position: "asc" },
       },
     },
   })
 
-  // SSE broadcast handled by the stream route — emit event here in future
+  broadcastShow(id, {
+    acts: show.actPositions.map((ap) => ({
+      id: ap.actId,
+      name: ap.act.name,
+      position: ap.position,
+      className: ap.act.class.name,
+      teacherName: `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`,
+    })),
+    currentPosition: show.currentPosition,
+  })
+
   return NextResponse.json({ data: show })
 }

@@ -50,7 +50,7 @@ export default function UsersClient({ users, currentUserId }: Props) {
 
   return (
     <>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
         <Box>
           <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
             Comptes
@@ -59,7 +59,9 @@ export default function UsersClient({ users, currentUserId }: Props) {
             {users.length} compte{users.length > 1 ? "s" : ""} administrateur
           </Typography>
         </Box>
-        <InviteButton />
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <InviteButton />
+        </Box>
       </Box>
 
       <Divider sx={{ mb: 2 }} />

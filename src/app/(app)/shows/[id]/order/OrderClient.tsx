@@ -29,11 +29,13 @@ import TextField from "@mui/material/TextField"
 import Tooltip from "@mui/material/Tooltip"
 import Typography from "@mui/material/Typography"
 import AddIcon from "@mui/icons-material/Add"
+import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh"
 import DeleteIcon from "@mui/icons-material/Delete"
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator"
 import EditIcon from "@mui/icons-material/Edit"
 import GroupIcon from "@mui/icons-material/Group"
+import LiveTvIcon from "@mui/icons-material/LiveTv"
 import LockIcon from "@mui/icons-material/Lock"
 import LockOpenIcon from "@mui/icons-material/LockOpen"
 import ConfirmDialog from "@/components/ConfirmDialog"
@@ -374,7 +376,7 @@ export default function OrderClient({ show, classes }: Props) {
 
   return (
     <>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 1, gap: 2 }}>
         <Box>
           <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
             Ordre de passage
@@ -383,65 +385,87 @@ export default function OrderClient({ show, classes }: Props) {
             {show.name} · {show.acts.length} tableau{show.acts.length !== 1 ? "x" : ""}
           </Typography>
         </Box>
-
-        <Box sx={{ display: "flex", gap: 1 }}>
-          {editMode ? (
-            <>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={generateLoading ? <CircularProgress size={14} /> : <AutoFixHighIcon />}
-                onClick={handleGenerate}
-                disabled={generateLoading || saveLoading}
-              >
-                Générer
-              </Button>
-              <Button variant="outlined" size="small" onClick={handleCancelEdit} disabled={saveLoading}>
-                Annuler
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={handleSave}
-                disabled={saveLoading}
-                startIcon={saveLoading ? <CircularProgress size={14} /> : undefined}
-              >
-                Valider
-              </Button>
-            </>
-          ) : (
-            <>
-              <Tooltip title="Participants">
-                <span>
-                  <IconButton component={Link} href={`/shows/${show.id}/participants`} size="small">
-                    <GroupIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Ajouter un tableau">
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    setCreateForm(emptyForm)
-                    setCreateError(null)
-                    setCreateOpen(true)
-                  }}
-                >
-                  <AddIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<EditIcon />}
-                onClick={handleEnterEdit}
-                disabled={show.acts.length === 0}
-              >
-                Modifier l&apos;ordre
-              </Button>
-            </>
-          )}
+        <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
+          <Button
+            component={Link}
+            href="/shows"
+            variant="outlined"
+            size="small"
+            startIcon={<ArrowBackIcon />}
+          >
+            Retour
+          </Button>
+          <Button
+            component={Link}
+            href={`/shows/${show.id}/live`}
+            variant="outlined"
+            size="small"
+            startIcon={<LiveTvIcon />}
+          >
+            Live
+          </Button>
         </Box>
+      </Box>
+
+      <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mb: 3 }}>
+        {editMode ? (
+          <>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={generateLoading ? <CircularProgress size={14} /> : <AutoFixHighIcon />}
+              onClick={handleGenerate}
+              disabled={generateLoading || saveLoading}
+            >
+              Générer
+            </Button>
+            <Button variant="outlined" size="small" onClick={handleCancelEdit} disabled={saveLoading}>
+              Annuler
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleSave}
+              disabled={saveLoading}
+              startIcon={saveLoading ? <CircularProgress size={14} /> : undefined}
+            >
+              Valider
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              component={Link}
+              href={`/shows/${show.id}/participants`}
+              variant="outlined"
+              size="small"
+              startIcon={<GroupIcon />}
+            >
+              Participants
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setCreateForm(emptyForm)
+                setCreateError(null)
+                setCreateOpen(true)
+              }}
+            >
+              Ajouter
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon />}
+              onClick={handleEnterEdit}
+              disabled={show.acts.length === 0}
+            >
+              Modifier l&apos;ordre
+            </Button>
+          </>
+        )}
       </Box>
 
       <Divider sx={{ mb: 2 }} />

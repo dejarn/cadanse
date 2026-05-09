@@ -203,7 +203,7 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
 
   return (
     <>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
         <Box>
           <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
             Élèves
@@ -212,19 +212,21 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
             {students.length} élève{students.length > 1 ? "s" : ""}
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setCreateFirst("")
-            setCreateLast("")
-            setCreateError(null)
-            setCreateOpen(true)
-          }}
-        >
-          Ajouter un élève
-        </Button>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setCreateFirst("")
+              setCreateLast("")
+              setCreateError(null)
+              setCreateOpen(true)
+            }}
+          >
+            Ajouter un élève
+          </Button>
+        </Box>
       </Box>
 
       <Divider sx={{ mb: 2 }} />

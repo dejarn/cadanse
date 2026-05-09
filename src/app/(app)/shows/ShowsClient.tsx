@@ -142,7 +142,7 @@ export default function ShowsClient({ shows, seasonId }: Props) {
 
   return (
     <>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
         <Box>
           <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
             Spectacles
@@ -151,18 +151,20 @@ export default function ShowsClient({ shows, seasonId }: Props) {
             {shows.length} spectacle{shows.length !== 1 ? "s" : ""}
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setCreateForm(emptyForm)
-            setCreateError(null)
-            setCreateOpen(true)
-          }}
-        >
-          Ajouter un spectacle
-        </Button>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setCreateForm(emptyForm)
+              setCreateError(null)
+              setCreateOpen(true)
+            }}
+          >
+            Ajouter un spectacle
+          </Button>
+        </Box>
       </Box>
 
       <Divider sx={{ mb: 2 }} />

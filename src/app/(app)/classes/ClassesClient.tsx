@@ -121,7 +121,7 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
 
   return (
     <>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
         <Box>
           <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
             Cours
@@ -130,19 +130,21 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
             {classes.length} cours
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<AddIcon />}
-          disabled={teachers.length === 0}
-          onClick={() => {
-            setCreateForm(emptyForm)
-            setCreateError(null)
-            setCreateOpen(true)
-          }}
-        >
-          Ajouter un cours
-        </Button>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            disabled={teachers.length === 0}
+            onClick={() => {
+              setCreateForm(emptyForm)
+              setCreateError(null)
+              setCreateOpen(true)
+            }}
+          >
+            Ajouter un cours
+          </Button>
+        </Box>
       </Box>
 
       <Divider sx={{ mb: 2 }} />

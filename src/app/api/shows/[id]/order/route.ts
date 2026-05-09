@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { broadcastShow } from "@/lib/sse-emitter"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -34,6 +35,25 @@ export async function PUT(req: NextRequest, { params }: Params) {
     }),
   ])
 
-  // SSE broadcast: to be implemented via global event emitter or DB polling
+  const [rows, show] = await Promise.all([
+    prisma.actPosition.findMany({
+      where: { showId },
+      include: { act: { include: { class: { include: { teacher: true } } } } },
+      orderBy: { position: "asc" },
+    }),
+    prisma.show.findUnique({ where: { id: showId } }),
+  ])
+
+  broadcastShow(showId, {
+    acts: rows.map((p) => ({
+      id: p.actId,
+      name: p.act.name,
+      position: p.position,
+      className: p.act.class.name,
+      teacherName: `${p.act.class.teacher.firstName} ${p.act.class.teacher.lastName}`,
+    })),
+    currentPosition: show?.currentPosition ?? null,
+  })
+
   return NextResponse.json({ ok: true })
 }
