@@ -42,16 +42,19 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
 
   const [searchText, setSearchText] = useState("")
   const [teacherFilter, setTeacherFilter] = useState("")
+  const [sortBy, setSortBy] = useState<"name" | "schedule">("name")
   const deferredSearch = useDeferredValue(searchText)
 
-  const filteredClasses = classes.filter((cls) => {
-    const matchesText =
-      deferredSearch === "" ||
-      cls.name.toLowerCase().includes(deferredSearch.toLowerCase()) ||
-      cls.schedule.toLowerCase().includes(deferredSearch.toLowerCase())
-    const matchesTeacher = teacherFilter === "" || cls.teacherId === teacherFilter
-    return matchesText && matchesTeacher
-  })
+  const filteredClasses = classes
+    .filter((cls) => {
+      const matchesText =
+        deferredSearch === "" ||
+        cls.name.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        cls.schedule.toLowerCase().includes(deferredSearch.toLowerCase())
+      const matchesTeacher = teacherFilter === "" || cls.teacherId === teacherFilter
+      return matchesText && matchesTeacher
+    })
+    .toSorted((a, b) => a[sortBy].localeCompare(b[sortBy], "fr"))
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyForm)
@@ -195,6 +198,16 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
                 {t.firstName} {t.lastName}
               </MenuItem>
             ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "name" | "schedule")}
+            sx={{ flex: "0 1 160px", minWidth: 130 }}
+          >
+            <MenuItem value="name">Trier : nom</MenuItem>
+            <MenuItem value="schedule">Trier : horaire</MenuItem>
           </TextField>
         </Box>
       </Box>
