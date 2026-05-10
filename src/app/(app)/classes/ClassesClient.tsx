@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useDeferredValue } from "react"
 import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
@@ -9,6 +9,8 @@ import IconButton from "@mui/material/IconButton"
 import Divider from "@mui/material/Divider"
 import TextField from "@mui/material/TextField"
 import MenuItem from "@mui/material/MenuItem"
+import InputAdornment from "@mui/material/InputAdornment"
+import SearchIcon from "@mui/icons-material/Search"
 import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
@@ -37,6 +39,19 @@ const emptyForm = { name: "", schedule: "", teacherId: "" }
 
 export default function ClassesClient({ classes, teachers, seasonId }: Props) {
   const router = useRouter()
+
+  const [searchText, setSearchText] = useState("")
+  const [teacherFilter, setTeacherFilter] = useState("")
+  const deferredSearch = useDeferredValue(searchText)
+
+  const filteredClasses = classes.filter((cls) => {
+    const matchesText =
+      deferredSearch === "" ||
+      cls.name.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+      cls.schedule.toLowerCase().includes(deferredSearch.toLowerCase())
+    const matchesTeacher = teacherFilter === "" || cls.teacherId === teacherFilter
+    return matchesText && matchesTeacher
+  })
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyForm)
@@ -121,21 +136,24 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
 
   return (
     <>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
-        <Box>
-          <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
-            Cours
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {classes.length} cours
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
+          <Box>
+            <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
+              Cours
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {filteredClasses.length === classes.length
+                ? `${classes.length} cours`
+                : `${filteredClasses.length} / ${classes.length} cours`}
+            </Typography>
+          </Box>
           <Button
             variant="outlined"
             size="small"
             startIcon={<AddIcon />}
             disabled={teachers.length === 0}
+            sx={{ mt: 0.5, flexShrink: 0 }}
             onClick={() => {
               setCreateForm(emptyForm)
               setCreateError(null)
@@ -144,6 +162,40 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
           >
             Ajouter un cours
           </Button>
+        </Box>
+
+        <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+          <TextField
+            size="small"
+            placeholder="Rechercher par nom ou horaire…"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            sx={{ flex: "1 1 220px" }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" sx={{ color: "text.disabled" }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            value={teacherFilter}
+            onChange={(e) => setTeacherFilter(e.target.value)}
+            sx={{ flex: "0 1 200px", minWidth: 160 }}
+            slotProps={{ select: { displayEmpty: true } }}
+          >
+            <MenuItem value="">Tous les professeurs</MenuItem>
+            {teachers.map((t) => (
+              <MenuItem key={t.id} value={t.id}>
+                {t.firstName} {t.lastName}
+              </MenuItem>
+            ))}
+          </TextField>
         </Box>
       </Box>
 
@@ -155,9 +207,15 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
             Aucun cours pour cette saison.
           </Typography>
         </Box>
+      ) : filteredClasses.length === 0 ? (
+        <Box sx={{ px: 2, py: 1.5, borderRadius: 1, minHeight: 56, display: "flex", alignItems: "center" }}>
+          <Typography variant="body2" color="text.secondary">
+            Aucun cours ne correspond aux filtres.
+          </Typography>
+        </Box>
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {classes.map((cls) => (
+          {filteredClasses.map((cls) => (
             <Box
               key={cls.id}
               sx={{
