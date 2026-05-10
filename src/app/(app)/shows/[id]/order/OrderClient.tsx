@@ -21,6 +21,7 @@ import { CSS } from "@dnd-kit/utilities"
 import Alert from "@mui/material/Alert"
 import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
+import Chip from "@mui/material/Chip"
 import CircularProgress from "@mui/material/CircularProgress"
 import Divider from "@mui/material/Divider"
 import IconButton from "@mui/material/IconButton"
@@ -43,7 +44,7 @@ import FormDialog from "@/components/FormDialog"
 import { useEntityDialog } from "@/hooks/useEntityDialog"
 import type { Act, ActPosition, Class, Show, Teacher } from "@prisma/client"
 
-type ActWithClass = Act & { class: Class & { teacher: Teacher } }
+type ActWithClass = Act & { class: (Class & { teacher: Teacher }) | null }
 
 type ShowWithActs = Show & {
   acts: ActWithClass[]
@@ -55,7 +56,7 @@ interface Props {
   classes: Class[]
 }
 
-const emptyForm = { name: "", classId: "" }
+const emptyForm = { name: "", classId: "", durationMin: "", durationSec: "" }
 
 // Locked acts stay at their indices; unlocked acts flow around them.
 function applyDragWithLocks(
@@ -163,7 +164,7 @@ function SortableActRow({
         <Box>
           <Typography variant="body1">{act.name}</Typography>
           <Typography variant="caption" color="text.secondary">
-            {act.class.name} · {act.class.schedule} · {act.class.teacher.firstName} {act.class.teacher.lastName}
+            {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : "Sans cours"}
           </Typography>
         </Box>
       </Box>
@@ -184,6 +185,12 @@ export default function OrderClient({ show, classes }: Props) {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const deleteDialog = useEntityDialog(show.acts)
+
+  // ---- Edit duration ----
+  const editDialog = useEntityDialog(show.acts)
+  const [editForm, setEditForm] = useState({ durationMin: "", durationSec: "" })
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
 
   // ---- Order mode ----
   const [editMode, setEditMode] = useState(false)
@@ -237,6 +244,32 @@ export default function OrderClient({ show, classes }: Props) {
     setDeleteError(null)
   }
 
+  function openEdit(act: ActWithClass) {
+    editDialog.open(act)
+    setEditForm({
+      durationMin: act.duration != null ? String(Math.floor(act.duration / 60)) : "",
+      durationSec: act.duration != null ? String(act.duration % 60) : "",
+    })
+    setEditError(null)
+  }
+
+  async function handleEdit() {
+    setEditLoading(true)
+    setEditError(null)
+    const min = parseInt(editForm.durationMin || "0", 10)
+    const sec = parseInt(editForm.durationSec || "0", 10)
+    const duration = (min || sec) ? min * 60 + sec : null
+    const res = await fetch(`/api/shows/${show.id}/acts/${editDialog.selected!.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ duration }),
+    })
+    if (!res.ok) { setEditError("Erreur lors de la modification"); setEditLoading(false); return }
+    setEditLoading(false)
+    editDialog.close()
+    router.refresh()
+  }
+
   async function handleDelete() {
     if (!deleteDialog.selected) return
     setDeleteError(null)
@@ -256,10 +289,17 @@ export default function OrderClient({ show, classes }: Props) {
     e.preventDefault()
     setCreateError(null)
     setCreateLoading(true)
+    const min = parseInt(createForm.durationMin || "0", 10)
+    const sec = parseInt(createForm.durationSec || "0", 10)
+    const duration = (min || sec) ? min * 60 + sec : null
     const res = await fetch(`/api/shows/${show.id}/acts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(createForm),
+      body: JSON.stringify({
+        name: createForm.name,
+        classId: createForm.classId || null,
+        duration,
+      }),
     })
     setCreateLoading(false)
     if (res.status === 201) {
@@ -523,12 +563,31 @@ export default function OrderClient({ show, classes }: Props) {
                 <Box>
                   <Typography variant="body1">{act.name}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {act.class.name} · {act.class.schedule} · {act.class.teacher.firstName}{" "}
-                    {act.class.teacher.lastName}
+                    {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : "Sans cours"}
                   </Typography>
                 </Box>
               </Box>
-              <Box sx={{ display: "flex", gap: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                {act.duration != null && (
+                  <Chip
+                    label={`${Math.floor(act.duration / 60)}:${String(act.duration % 60).padStart(2, "0")}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      borderColor: "rgba(212,168,83,0.35)",
+                      color: "primary.main",
+                      fontSize: "0.7rem",
+                      fontVariantNumeric: "tabular-nums",
+                      letterSpacing: "0.06em",
+                      height: 22,
+                    }}
+                  />
+                )}
+                <Tooltip title="Modifier la durée">
+                  <IconButton size="small" onClick={() => openEdit(act)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
                 <Tooltip title="Supprimer">
                   <IconButton size="small" onClick={() => openDelete(act)}>
                     <DeleteIcon fontSize="small" />
@@ -564,16 +623,74 @@ export default function OrderClient({ show, classes }: Props) {
             label="Cours"
             value={createForm.classId}
             onChange={(e) => setCreateForm({ ...createForm, classId: e.target.value })}
-            required
             fullWidth
             size="small"
           >
+            <MenuItem value="">Sans cours</MenuItem>
             {classes.map((c) => (
               <MenuItem key={c.id} value={c.id}>
                 {c.name} · {c.schedule}
               </MenuItem>
             ))}
           </TextField>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <TextField
+              label="Durée — min"
+              type="number"
+              value={createForm.durationMin}
+              onChange={(e) => setCreateForm({ ...createForm, durationMin: e.target.value })}
+              size="small"
+              slotProps={{ htmlInput: { min: 0 } }}
+              sx={{ flex: 1 }}
+            />
+            <Typography color="text.secondary" sx={{ fontSize: "1.4rem", fontWeight: 300, lineHeight: 1, pt: "2px" }}>
+              :
+            </Typography>
+            <TextField
+              label="sec"
+              type="number"
+              value={createForm.durationSec}
+              onChange={(e) => setCreateForm({ ...createForm, durationSec: e.target.value })}
+              size="small"
+              slotProps={{ htmlInput: { min: 0, max: 59 } }}
+              sx={{ width: 90 }}
+            />
+          </Box>
+        </Box>
+      </FormDialog>
+
+      <FormDialog
+        open={!!editDialog.selected}
+        title="Durée du tableau"
+        submitLabel="Enregistrer"
+        loading={editLoading}
+        error={editError}
+        onClose={editDialog.close}
+        onSubmit={handleEdit}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <TextField
+            label="Min"
+            type="number"
+            value={editForm.durationMin}
+            onChange={(e) => setEditForm({ ...editForm, durationMin: e.target.value })}
+            size="small"
+            slotProps={{ htmlInput: { min: 0 } }}
+            sx={{ width: 90 }}
+            autoFocus
+          />
+          <Typography color="text.secondary" sx={{ fontSize: "1.4rem", fontWeight: 300, lineHeight: 1, pt: "2px" }}>
+            :
+          </Typography>
+          <TextField
+            label="Sec"
+            type="number"
+            value={editForm.durationSec}
+            onChange={(e) => setEditForm({ ...editForm, durationSec: e.target.value })}
+            size="small"
+            slotProps={{ htmlInput: { min: 0, max: 59 } }}
+            sx={{ width: 90 }}
+          />
         </Box>
       </FormDialog>
 

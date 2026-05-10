@@ -28,8 +28,10 @@ export default async function LivePage({ params }: Props) {
     id: ap.actId,
     name: ap.act.name,
     position: ap.position,
-    className: ap.act.class.name,
-    teacherName: `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`,
+    className: ap.act.class?.name ?? null,
+    teacherName: ap.act.class
+      ? `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`
+      : null,
   }))
 
   return (

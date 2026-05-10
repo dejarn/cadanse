@@ -122,12 +122,13 @@ model Show {
 model Act {
   id            String   @id @default(uuid())
   name          String
-  classId       String
+  classId       String?
   showId        String
   fixedPosition Int?
+  duration      Int?
   createdAt     DateTime @default(now())
 
-  class        Class         @relation(fields: [classId], references: [id])
+  class        Class?        @relation(fields: [classId], references: [id])
   show         Show          @relation(fields: [showId], references: [id], onDelete: Cascade)
   actPositions ActPosition[]
 

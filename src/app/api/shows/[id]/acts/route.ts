@@ -23,10 +23,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id: showId } = await params
-  const { name, classId, fixedPosition } = await req.json()
+  const { name, classId, fixedPosition, duration } = await req.json()
 
   const act = await prisma.act.create({
-    data: { name, classId, showId, fixedPosition },
+    data: { name, classId, showId, fixedPosition, duration },
   })
 
   return NextResponse.json({ data: act }, { status: 201 })

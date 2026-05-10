@@ -10,8 +10,8 @@ interface Act {
   id: string
   name: string
   position: number
-  className: string
-  teacherName: string
+  className: string | null
+  teacherName: string | null
 }
 
 interface SSEPayload {
@@ -124,7 +124,7 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
                   <Box>
                     <Typography variant="body1">{act.name}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {act.className} · {act.teacherName}
+                      {act.className ? `${act.className} · ${act.teacherName}` : "Sans cours"}
                     </Typography>
                   </Box>
                   {isCurrent && (

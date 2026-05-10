@@ -8,7 +8,7 @@ showEmitter.setMaxListeners(200)
 if (process.env.NODE_ENV !== "production") g.showEmitter = showEmitter
 
 export type ShowPayload = {
-  acts: { id: string; name: string; position: number; className: string; teacherName: string }[]
+  acts: { id: string; name: string; position: number; className: string | null; teacherName: string | null }[]
   currentPosition: number | null
 }
 
