@@ -39,6 +39,7 @@ import GroupIcon from "@mui/icons-material/Group"
 import LiveTvIcon from "@mui/icons-material/LiveTv"
 import LockIcon from "@mui/icons-material/Lock"
 import LockOpenIcon from "@mui/icons-material/LockOpen"
+import RemoveIcon from "@mui/icons-material/Remove"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import FormDialog from "@/components/FormDialog"
 import { useEntityDialog } from "@/hooks/useEntityDialog"
@@ -98,6 +99,67 @@ function applyDragWithLocks(
     if (!result[i]) result[i] = newUnlocked[ui++]
   }
   return result
+}
+
+function DurationStepper({
+  value,
+  onChange,
+  label,
+  max,
+}: {
+  value: string
+  onChange: (v: string) => void
+  label: string
+  max?: number
+}) {
+  const num = parseInt(value || "0", 10)
+  const dec = () => onChange(String(Math.max(0, num - 1)))
+  const inc = () => onChange(String(max !== undefined ? Math.min(max, num + 1) : num + 1))
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.75 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <IconButton
+          onClick={dec}
+          sx={{ border: "1px solid", borderColor: "divider", width: 40, height: 40 }}
+        >
+          <RemoveIcon fontSize="small" />
+        </IconButton>
+        <Box
+          sx={{
+            minWidth: 64,
+            textAlign: "center",
+            border: "1px solid",
+            borderColor: "rgba(212,168,83,0.4)",
+            borderRadius: 1.5,
+            px: 2,
+            py: 1,
+          }}
+        >
+          <Typography
+            sx={{
+              fontVariantNumeric: "tabular-nums",
+              fontSize: "1.75rem",
+              color: "primary.main",
+              fontWeight: 500,
+              lineHeight: 1,
+            }}
+          >
+            {String(num).padStart(2, "0")}
+          </Typography>
+        </Box>
+        <IconButton
+          onClick={inc}
+          sx={{ border: "1px solid", borderColor: "divider", width: 40, height: 40 }}
+        >
+          <AddIcon fontSize="small" />
+        </IconButton>
+      </Box>
+      <Typography variant="caption" color="text.secondary">
+        {label}
+      </Typography>
+    </Box>
+  )
 }
 
 function SortableActRow({
@@ -633,27 +695,20 @@ export default function OrderClient({ show, classes }: Props) {
               </MenuItem>
             ))}
           </TextField>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <TextField
-              label="Durée — min"
-              type="number"
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, py: 1 }}>
+            <DurationStepper
               value={createForm.durationMin}
-              onChange={(e) => setCreateForm({ ...createForm, durationMin: e.target.value })}
-              size="small"
-              slotProps={{ htmlInput: { min: 0 } }}
-              sx={{ flex: 1 }}
+              onChange={(v) => setCreateForm({ ...createForm, durationMin: v })}
+              label="min"
             />
-            <Typography color="text.secondary" sx={{ fontSize: "1.4rem", fontWeight: 300, lineHeight: 1, pt: "2px" }}>
+            <Typography color="text.secondary" sx={{ fontSize: "1.75rem", fontWeight: 300, lineHeight: 1, pb: 3 }}>
               :
             </Typography>
-            <TextField
-              label="sec"
-              type="number"
+            <DurationStepper
               value={createForm.durationSec}
-              onChange={(e) => setCreateForm({ ...createForm, durationSec: e.target.value })}
-              size="small"
-              slotProps={{ htmlInput: { min: 0, max: 59 } }}
-              sx={{ width: 90 }}
+              onChange={(v) => setCreateForm({ ...createForm, durationSec: v })}
+              label="sec"
+              max={59}
             />
           </Box>
         </Box>
@@ -668,29 +723,38 @@ export default function OrderClient({ show, classes }: Props) {
         onClose={editDialog.close}
         onSubmit={handleEdit}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <TextField
-            label="Min"
-            type="number"
-            value={editForm.durationMin}
-            onChange={(e) => setEditForm({ ...editForm, durationMin: e.target.value })}
-            size="small"
-            slotProps={{ htmlInput: { min: 0 } }}
-            sx={{ width: 90 }}
-            autoFocus
-          />
-          <Typography color="text.secondary" sx={{ fontSize: "1.4rem", fontWeight: 300, lineHeight: 1, pt: "2px" }}>
-            :
-          </Typography>
-          <TextField
-            label="Sec"
-            type="number"
-            value={editForm.durationSec}
-            onChange={(e) => setEditForm({ ...editForm, durationSec: e.target.value })}
-            size="small"
-            slotProps={{ htmlInput: { min: 0, max: 59 } }}
-            sx={{ width: 90 }}
-          />
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {editDialog.selected && (
+            <>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  {editDialog.selected.name}
+                </Typography>
+                {editDialog.selected.class && (
+                  <Typography variant="caption" color="text.secondary">
+                    {editDialog.selected.class.name} · {editDialog.selected.class.teacher.firstName} {editDialog.selected.class.teacher.lastName}
+                  </Typography>
+                )}
+              </Box>
+              <Divider />
+            </>
+          )}
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, py: 1 }}>
+            <DurationStepper
+              value={editForm.durationMin}
+              onChange={(v) => setEditForm({ ...editForm, durationMin: v })}
+              label="min"
+            />
+            <Typography color="text.secondary" sx={{ fontSize: "1.75rem", fontWeight: 300, lineHeight: 1, pb: 3 }}>
+              :
+            </Typography>
+            <DurationStepper
+              value={editForm.durationSec}
+              onChange={(v) => setEditForm({ ...editForm, durationSec: v })}
+              label="sec"
+              max={59}
+            />
+          </Box>
         </Box>
       </FormDialog>
 
