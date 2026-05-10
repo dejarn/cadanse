@@ -19,7 +19,6 @@ type Teacher = {
   id: string
   firstName: string
   lastName: string
-  createdAt: Date
 }
 
 type Props = { teachers: Teacher[] }
@@ -168,10 +167,6 @@ export default function TeachersClient({ teachers }: Props) {
               </Typography>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                  {new Date(teacher.createdAt).toLocaleDateString("fr-FR")}
-                </Typography>
-
                 <IconButton size="small" onClick={() => openEdit(teacher)}>
                   <EditIcon fontSize="small" />
                 </IconButton>

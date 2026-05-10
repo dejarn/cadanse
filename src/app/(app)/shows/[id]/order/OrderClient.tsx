@@ -226,7 +226,7 @@ function SortableActRow({
         <Box>
           <Typography variant="body1">{act.name}</Typography>
           <Typography variant="caption" color="text.secondary">
-            {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : "Sans cours"}
+            {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : null}
           </Typography>
         </Box>
       </Box>
@@ -265,6 +265,18 @@ export default function OrderClient({ show, classes }: Props) {
 
   // ---- Derived ----
   const actMap = useMemo(() => new Map(show.acts.map((a) => [a.id, a])), [show.acts])
+
+  const durationStats = useMemo(() => {
+    const total = show.acts.reduce((sum, a) => sum + (a.duration ?? 0), 0)
+    const missing = show.acts.filter((a) => a.duration == null).length
+    const h = Math.floor(total / 3600)
+    const m = Math.floor((total % 3600) / 60)
+    const s = total % 60
+    const formatted = h > 0
+      ? `${h}h${String(m).padStart(2, "0")}min`
+      : `${m}min${s > 0 ? ` ${String(s).padStart(2, "0")}s` : ""}`
+    return { total, missing, formatted }
+  }, [show.acts])
 
   const viewOrder = useMemo(() => {
     if (show.actPositions.length === 0) return show.acts
@@ -486,6 +498,12 @@ export default function OrderClient({ show, classes }: Props) {
           <Typography variant="body2" color="text.secondary">
             {show.name} · {show.acts.length} tableau{show.acts.length !== 1 ? "x" : ""}
           </Typography>
+          {show.acts.length > 0 && (
+            <Typography variant="body2" color="text.secondary">
+              {durationStats.total > 0 ? durationStats.formatted : "0min"}
+              {durationStats.missing > 0 && ` · ${durationStats.missing} sans durée`}
+            </Typography>
+          )}
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
           <Button
@@ -625,7 +643,7 @@ export default function OrderClient({ show, classes }: Props) {
                 <Box>
                   <Typography variant="body1">{act.name}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : "Sans cours"}
+                    {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : null}
                   </Typography>
                 </Box>
               </Box>
@@ -645,7 +663,7 @@ export default function OrderClient({ show, classes }: Props) {
                     }}
                   />
                 )}
-                <Tooltip title="Modifier la durée">
+                <Tooltip title="Modifier">
                   <IconButton size="small" onClick={() => openEdit(act)}>
                     <EditIcon fontSize="small" />
                   </IconButton>
