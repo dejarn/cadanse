@@ -124,7 +124,7 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
                   <Box>
                     <Typography variant="body1">{act.name}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {act.className ? `${act.className} · ${act.teacherName}` : "Sans cours"}
+                      {act.className ? `${act.className} · ${act.teacherName}` : null}
                     </Typography>
                   </Box>
                   {isCurrent && (

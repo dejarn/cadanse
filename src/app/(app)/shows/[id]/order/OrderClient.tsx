@@ -250,7 +250,7 @@ export default function OrderClient({ show, classes }: Props) {
 
   // ---- Edit duration ----
   const editDialog = useEntityDialog(show.acts)
-  const [editForm, setEditForm] = useState({ durationMin: "", durationSec: "" })
+  const [editForm, setEditForm] = useState({ name: "", classId: "", durationMin: "", durationSec: "" })
   const [editError, setEditError] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
 
@@ -321,6 +321,8 @@ export default function OrderClient({ show, classes }: Props) {
   function openEdit(act: ActWithClass) {
     editDialog.open(act)
     setEditForm({
+      name: act.name,
+      classId: act.classId ?? "",
       durationMin: act.duration != null ? String(Math.floor(act.duration / 60)) : "",
       durationSec: act.duration != null ? String(act.duration % 60) : "",
     })
@@ -336,7 +338,7 @@ export default function OrderClient({ show, classes }: Props) {
     const res = await fetch(`/api/shows/${show.id}/acts/${editDialog.selected!.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ duration }),
+      body: JSON.stringify({ name: editForm.name, classId: editForm.classId || null, duration }),
     })
     if (!res.ok) { setEditError("Erreur lors de la modification"); setEditLoading(false); return }
     setEditLoading(false)
@@ -734,7 +736,7 @@ export default function OrderClient({ show, classes }: Props) {
 
       <FormDialog
         open={!!editDialog.selected}
-        title="Durée du tableau"
+        title="Modifier le tableau"
         submitLabel="Enregistrer"
         loading={editLoading}
         error={editError}
@@ -742,21 +744,30 @@ export default function OrderClient({ show, classes }: Props) {
         onSubmit={handleEdit}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {editDialog.selected && (
-            <>
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  {editDialog.selected.name}
-                </Typography>
-                {editDialog.selected.class && (
-                  <Typography variant="caption" color="text.secondary">
-                    {editDialog.selected.class.name} · {editDialog.selected.class.teacher.firstName} {editDialog.selected.class.teacher.lastName}
-                  </Typography>
-                )}
-              </Box>
-              <Divider />
-            </>
-          )}
+          <TextField
+            label="Nom du tableau"
+            value={editForm.name}
+            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+            required
+            fullWidth
+            size="small"
+            autoFocus
+          />
+          <TextField
+            select
+            label="Cours"
+            value={editForm.classId}
+            onChange={(e) => setEditForm({ ...editForm, classId: e.target.value })}
+            fullWidth
+            size="small"
+          >
+            <MenuItem value="">Sans cours</MenuItem>
+            {classes.map((c) => (
+              <MenuItem key={c.id} value={c.id}>
+                {c.name} · {c.schedule}
+              </MenuItem>
+            ))}
+          </TextField>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, py: 1 }}>
             <DurationStepper
               value={editForm.durationMin}
