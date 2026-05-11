@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import React, { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -112,9 +112,33 @@ function DurationStepper({
   label: string
   max?: number
 }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const num = parseInt(value || "0", 10)
   const dec = () => onChange(String(Math.max(0, num - 1)))
   const inc = () => onChange(String(max !== undefined ? Math.min(max, num + 1) : num + 1))
+
+  function startEdit() {
+    setDraft(num > 0 ? String(num) : "")
+    setEditing(true)
+    setTimeout(() => { inputRef.current?.select() }, 0)
+  }
+
+  function commitEdit() {
+    const parsed = parseInt(draft, 10)
+    if (!isNaN(parsed)) {
+      const clamped = max !== undefined ? Math.min(max, Math.max(0, parsed)) : Math.max(0, parsed)
+      onChange(String(clamped))
+    }
+    setEditing(false)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") commitEdit()
+    if (e.key === "Escape") setEditing(false)
+  }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.75 }}>
@@ -126,27 +150,59 @@ function DurationStepper({
           <RemoveIcon fontSize="small" />
         </IconButton>
         <Box
+          onClick={startEdit}
           sx={{
             minWidth: 64,
             textAlign: "center",
             border: "1px solid",
-            borderColor: "rgba(212,168,83,0.4)",
+            borderColor: editing ? "primary.main" : "rgba(212,168,83,0.4)",
             borderRadius: 1.5,
             px: 2,
             py: 1,
+            cursor: "text",
+            position: "relative",
           }}
         >
-          <Typography
-            sx={{
-              fontVariantNumeric: "tabular-nums",
-              fontSize: "1.75rem",
-              color: "primary.main",
-              fontWeight: 500,
-              lineHeight: 1,
-            }}
-          >
-            {String(num).padStart(2, "0")}
-          </Typography>
+          {editing ? (
+            <Box
+              component="input"
+              ref={inputRef}
+              type="number"
+              inputMode="numeric"
+              value={draft}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              sx={{
+                width: "100%",
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                fontVariantNumeric: "tabular-nums",
+                fontSize: "1.75rem",
+                color: "primary.main",
+                fontWeight: 500,
+                lineHeight: 1,
+                textAlign: "center",
+                fontFamily: "inherit",
+                p: 0,
+                "appearance": "textfield",
+                "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": { display: "none" },
+              }}
+            />
+          ) : (
+            <Typography
+              sx={{
+                fontVariantNumeric: "tabular-nums",
+                fontSize: "1.75rem",
+                color: "primary.main",
+                fontWeight: 500,
+                lineHeight: 1,
+              }}
+            >
+              {String(num).padStart(2, "0")}
+            </Typography>
+          )}
         </Box>
         <IconButton
           onClick={inc}
