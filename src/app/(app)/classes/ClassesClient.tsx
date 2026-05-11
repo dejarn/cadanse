@@ -18,7 +18,7 @@ import ConfirmDialog from "@/components/ConfirmDialog"
 import FormDialog from "@/components/FormDialog"
 import { useEntityDialog } from "@/hooks/useEntityDialog"
 
-type Teacher = { id: string; firstName: string; lastName: string }
+type Teacher = { id: string; firstName: string; lastName: string; displayName?: string | null }
 
 type Class = {
   id: string
@@ -244,7 +244,7 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
               <Box>
                 <Typography variant="body1">{cls.name}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {cls.schedule} · {cls.teacher.firstName} {cls.teacher.lastName}
+                  {cls.schedule} · {cls.teacher.displayName ?? `${cls.teacher.firstName} ${cls.teacher.lastName}`}
                 </Typography>
               </Box>
 

@@ -54,10 +54,11 @@ model Season {
 }
 
 model Teacher {
-  id        String   @id @default(uuid())
-  firstName String
-  lastName  String
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  displayName String?
+  createdAt   DateTime @default(now())
 
   classes   Class[]
 

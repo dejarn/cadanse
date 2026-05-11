@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       position: p.position,
       className: p.act.class?.name ?? null,
       teacherName: p.act.class
-        ? `${p.act.class.teacher.firstName} ${p.act.class.teacher.lastName}`
+        ? p.act.class.teacher.displayName ?? `${p.act.class.teacher.firstName} ${p.act.class.teacher.lastName}`
         : null,
     })),
     currentPosition: show?.currentPosition ?? null,

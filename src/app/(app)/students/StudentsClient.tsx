@@ -27,7 +27,7 @@ type ClassItem = {
   id: string
   name: string
   schedule: string
-  teacher: { firstName: string; lastName: string }
+  teacher: { firstName: string; lastName: string; displayName: string | null }
 }
 
 type Enrollment = { classId: string; class: ClassItem }
@@ -424,8 +424,7 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
                       color="text.secondary"
                       sx={{ display: "block", mt: 0.35, letterSpacing: 0.2, opacity: 0.9 }}
                     >
-                      {enrollment.class.schedule} · {enrollment.class.teacher.firstName}{" "}
-                      {enrollment.class.teacher.lastName}
+                      {enrollment.class.schedule} · {enrollment.class.teacher.displayName ?? `${enrollment.class.teacher.firstName} ${enrollment.class.teacher.lastName}`}
                     </Typography>
                   </Box>
                   <IconButton

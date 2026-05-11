@@ -19,6 +19,7 @@ type Teacher = {
   id: string
   firstName: string
   lastName: string
+  displayName: string | null
 }
 
 type Props = { teachers: Teacher[] }
@@ -29,11 +30,13 @@ export default function TeachersClient({ teachers }: Props) {
   const [createOpen, setCreateOpen] = useState(false)
   const [createFirst, setCreateFirst] = useState("")
   const [createLast, setCreateLast] = useState("")
+  const [createDisplay, setCreateDisplay] = useState("")
   const [createError, setCreateError] = useState<string | null>(null)
   const [createLoading, setCreateLoading] = useState(false)
 
   const [editFirst, setEditFirst] = useState("")
   const [editLast, setEditLast] = useState("")
+  const [editDisplay, setEditDisplay] = useState("")
   const [editError, setEditError] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
 
@@ -50,13 +53,14 @@ export default function TeachersClient({ teachers }: Props) {
     const res = await fetch("/api/teachers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: createFirst, lastName: createLast }),
+      body: JSON.stringify({ firstName: createFirst, lastName: createLast, displayName: createDisplay || null }),
     })
     setCreateLoading(false)
     if (res.status === 201) {
       setCreateOpen(false)
       setCreateFirst("")
       setCreateLast("")
+      setCreateDisplay("")
       router.refresh()
       return
     }
@@ -68,6 +72,7 @@ export default function TeachersClient({ teachers }: Props) {
     editDialog.open(teacher)
     setEditFirst(teacher.firstName)
     setEditLast(teacher.lastName)
+    setEditDisplay(teacher.displayName ?? "")
     setEditError(null)
   }
 
@@ -79,7 +84,7 @@ export default function TeachersClient({ teachers }: Props) {
     const res = await fetch(`/api/teachers/${editDialog.selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: editFirst, lastName: editLast }),
+      body: JSON.stringify({ firstName: editFirst, lastName: editLast, displayName: editDisplay || null }),
     })
     setEditLoading(false)
     if (res.ok) {
@@ -162,9 +167,16 @@ export default function TeachersClient({ teachers }: Props) {
                 "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
               }}
             >
-              <Typography variant="body1">
-                {teacher.firstName} {teacher.lastName}
-              </Typography>
+              <Box>
+                <Typography variant="body1">
+                  {teacher.displayName ?? `${teacher.firstName} ${teacher.lastName}`}
+                </Typography>
+                {teacher.displayName && (
+                  <Typography variant="caption" color="text.secondary">
+                    {teacher.firstName} {teacher.lastName}
+                  </Typography>
+                )}
+              </Box>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <IconButton size="small" onClick={() => openEdit(teacher)}>
@@ -207,6 +219,14 @@ export default function TeachersClient({ teachers }: Props) {
             fullWidth
             size="small"
           />
+          <TextField
+            label="Nom affiché (optionnel)"
+            value={createDisplay}
+            onChange={(e) => setCreateDisplay(e.target.value)}
+            fullWidth
+            size="small"
+            helperText="Si renseigné, remplace prénom + nom partout dans l'app."
+          />
         </Box>
       </FormDialog>
 
@@ -236,6 +256,14 @@ export default function TeachersClient({ teachers }: Props) {
             required
             fullWidth
             size="small"
+          />
+          <TextField
+            label="Nom affiché (optionnel)"
+            value={editDisplay}
+            onChange={(e) => setEditDisplay(e.target.value)}
+            fullWidth
+            size="small"
+            helperText="Si renseigné, remplace prénom + nom partout dans l'app."
           />
         </Box>
       </FormDialog>

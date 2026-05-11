@@ -26,7 +26,7 @@ export default async function ClassDetailPage({ params }: Props) {
         {cls.name}
       </Typography>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        {cls.schedule} — {cls.teacher.firstName} {cls.teacher.lastName}
+        {cls.schedule} — {cls.teacher.displayName ?? `${cls.teacher.firstName} ${cls.teacher.lastName}`}
       </Typography>
       <Typography variant="body2" color="text.secondary">
         {cls.enrollments.length === 0

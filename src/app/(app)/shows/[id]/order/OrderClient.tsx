@@ -226,7 +226,7 @@ function SortableActRow({
         <Box>
           <Typography variant="body1">{act.name}</Typography>
           <Typography variant="caption" color="text.secondary">
-            {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : null}
+            {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.displayName ?? `${act.class.teacher.firstName} ${act.class.teacher.lastName}`}` : null}
           </Typography>
         </Box>
       </Box>
@@ -645,7 +645,7 @@ export default function OrderClient({ show, classes }: Props) {
                 <Box>
                   <Typography variant="body1">{act.name}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.firstName} ${act.class.teacher.lastName}` : null}
+                    {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.displayName ?? `${act.class.teacher.firstName} ${act.class.teacher.lastName}`}` : null}
                   </Typography>
                 </Box>
               </Box>

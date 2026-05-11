@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
       position: ap.position,
       className: ap.act.class?.name ?? null,
       teacherName: ap.act.class
-        ? `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`
+        ? ap.act.class.teacher.displayName ?? `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`
         : null,
     })),
     currentPosition: show.currentPosition,
