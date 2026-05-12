@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -20,8 +19,11 @@ import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import SchoolIcon from "@mui/icons-material/School"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import EntityRow from "@/components/EntityRow"
 import FormDialog from "@/components/FormDialog"
+import { useCrudDialogs } from "@/hooks/useCrudDialogs"
 import { useEntityDialog } from "@/hooks/useEntityDialog"
+import { teacherName } from "@/lib/teacherName"
 
 type ClassItem = {
   id: string
@@ -47,35 +49,29 @@ type Props = {
 }
 
 export default function StudentsClient({ students, classes, hasActiveSeason }: Props) {
-  const router = useRouter()
+  const crud = useCrudDialogs<Student>({
+    items: students,
+    createUrl: "/api/students",
+    editUrl: (s) => `/api/students/${s.id}`,
+    deleteUrl: (s) => `/api/students/${s.id}`,
+  })
 
-  const [createOpen, setCreateOpen] = useState(false)
   const [createFirst, setCreateFirst] = useState("")
   const [createLast, setCreateLast] = useState("")
-  const [createError, setCreateError] = useState<string | null>(null)
-  const [createLoading, setCreateLoading] = useState(false)
-
   const [editFirst, setEditFirst] = useState("")
   const [editLast, setEditLast] = useState("")
-  const [editError, setEditError] = useState<string | null>(null)
-  const [editLoading, setEditLoading] = useState(false)
 
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [filterName, setFilterName] = useState("")
+  const [filterClassId, setFilterClassId] = useState("")
+
+  const classesDialog = useEntityDialog(students)
+  const classesStudent = classesDialog.displaySelected
 
   const [addClassId, setAddClassId] = useState("")
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [removeLoadingId, setRemoveLoadingId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
-
-  const [filterName, setFilterName] = useState("")
-  const [filterClassId, setFilterClassId] = useState("")
-
-  const editDialog = useEntityDialog(students)
-  const deleteDialog = useEntityDialog(students)
-  const classesDialog = useEntityDialog(students)
-  const classesStudent = classesDialog.displaySelected
 
   const filteredStudents = students.filter((s) => {
     const fullName = `${s.firstName} ${s.lastName}`.toLowerCase()
@@ -90,70 +86,19 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    setCreateError(null)
-    setCreateLoading(true)
-    const res = await fetch("/api/students", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: createFirst, lastName: createLast }),
-    })
-    setCreateLoading(false)
-    if (res.status === 201) {
-      setCreateOpen(false)
-      setCreateFirst("")
-      setCreateLast("")
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setCreateError(data.error ?? "Une erreur est survenue.")
+    const ok = await crud.submitCreate({ firstName: createFirst, lastName: createLast })
+    if (ok) { setCreateFirst(""); setCreateLast("") }
   }
 
   function openEdit(student: Student) {
-    editDialog.open(student)
+    crud.openEdit(student)
     setEditFirst(student.firstName)
     setEditLast(student.lastName)
-    setEditError(null)
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editDialog.selected) return
-    setEditError(null)
-    setEditLoading(true)
-    const res = await fetch(`/api/students/${editDialog.selected.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: editFirst, lastName: editLast }),
-    })
-    setEditLoading(false)
-    if (res.ok) {
-      editDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setEditError(data.error ?? "Une erreur est survenue.")
-  }
-
-  function openDelete(student: Student) {
-    deleteDialog.open(student)
-    setDeleteError(null)
-  }
-
-  async function handleDelete() {
-    if (!deleteDialog.selected) return
-    setDeleteError(null)
-    setDeleteLoading(true)
-    const res = await fetch(`/api/students/${deleteDialog.selected.id}`, { method: "DELETE" })
-    setDeleteLoading(false)
-    if (res.status === 204) {
-      deleteDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setDeleteError(data.error ?? "Une erreur est survenue.")
+    await crud.submitEdit({ firstName: editFirst, lastName: editLast })
   }
 
   function openClasses(student: Student) {
@@ -176,11 +121,11 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
     setAddLoading(false)
     if (res.status === 201) {
       setAddClassId("")
-      router.refresh()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setAddError(data.error ?? "Une erreur est survenue.")
       return
     }
-    const data = await res.json().catch(() => ({}))
-    setAddError(data.error ?? "Une erreur est survenue.")
   }
 
   async function handleRemoveClass(classId: string) {
@@ -193,12 +138,10 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
       body: JSON.stringify({ studentId: classesDialog.selected.id }),
     })
     setRemoveLoadingId(null)
-    if (res.status === 204) {
-      router.refresh()
-      return
+    if (res.status !== 204) {
+      const data = await res.json().catch(() => ({}))
+      setRemoveError(data.error ?? "Une erreur est survenue.")
     }
-    const data = await res.json().catch(() => ({}))
-    setRemoveError(data.error ?? "Une erreur est survenue.")
   }
 
   return (
@@ -220,8 +163,7 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
             onClick={() => {
               setCreateFirst("")
               setCreateLast("")
-              setCreateError(null)
-              setCreateOpen(true)
+              crud.openCreate()
             }}
           >
             Ajouter un élève
@@ -263,52 +205,44 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {filteredStudents.map((student) => (
-            <Box
+            <EntityRow
               key={student.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1.5,
-                borderRadius: 1,
-                "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
-              }}
+              actions={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                    {student.enrollments.length} cours
+                  </Typography>
+
+                  <IconButton size="small" onClick={() => openClasses(student)} title="Gérer les cours">
+                    <SchoolIcon fontSize="small" />
+                  </IconButton>
+
+                  <IconButton size="small" onClick={() => openEdit(student)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+
+                  <IconButton size="small" onClick={() => crud.openDelete(student)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              }
             >
               <Typography variant="body1">
                 {student.firstName} {student.lastName}
               </Typography>
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                  {student.enrollments.length} cours
-                </Typography>
-
-                <IconButton size="small" onClick={() => openClasses(student)} title="Gérer les cours">
-                  <SchoolIcon fontSize="small" />
-                </IconButton>
-
-                <IconButton size="small" onClick={() => openEdit(student)}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-
-                <IconButton size="small" onClick={() => openDelete(student)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
+            </EntityRow>
           ))}
         </Box>
       )}
 
       {/* Create dialog */}
       <FormDialog
-        open={createOpen}
+        open={crud.createOpen}
         title="Nouvel élève"
         submitLabel="Créer"
-        loading={createLoading}
-        error={createError}
-        onClose={() => setCreateOpen(false)}
+        loading={crud.createLoading}
+        error={crud.createError}
+        onClose={crud.closeCreate}
         onSubmit={handleCreate}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -334,12 +268,12 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
 
       {/* Edit dialog */}
       <FormDialog
-        open={!!editDialog.selected}
+        open={!!crud.editDialog.selected}
         title="Modifier l'élève"
         submitLabel="Enregistrer"
-        loading={editLoading}
-        error={editError}
-        onClose={editDialog.close}
+        loading={crud.editLoading}
+        error={crud.editError}
+        onClose={crud.closeEdit}
         onSubmit={handleEdit}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -365,18 +299,18 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
 
       {/* Delete dialog */}
       <ConfirmDialog
-        open={!!deleteDialog.selected}
+        open={!!crud.deleteDialog.selected}
         title="Supprimer l'élève"
         message={
           <>
-            Supprimer «&nbsp;{deleteDialog.displaySelected?.firstName} {deleteDialog.displaySelected?.lastName}&nbsp;» ? Ses inscriptions aux cours seront également supprimées.
+            Supprimer «&nbsp;{crud.deleteDialog.displaySelected?.firstName} {crud.deleteDialog.displaySelected?.lastName}&nbsp;» ? Ses inscriptions aux cours seront également supprimées.
           </>
         }
         confirmLabel="Supprimer"
-        loading={deleteLoading}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onClose={deleteDialog.close}
+        loading={crud.deleteLoading}
+        error={crud.deleteError}
+        onConfirm={crud.confirmDelete}
+        onClose={crud.closeDelete}
       />
 
       {/* Classes dialog */}
@@ -424,7 +358,7 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
                       color="text.secondary"
                       sx={{ display: "block", mt: 0.35, letterSpacing: 0.2, opacity: 0.9 }}
                     >
-                      {enrollment.class.schedule} · {enrollment.class.teacher.displayName ?? `${enrollment.class.teacher.firstName} ${enrollment.class.teacher.lastName}`}
+                      {enrollment.class.schedule} · {teacherName(enrollment.class.teacher)}
                     </Typography>
                   </Box>
                   <IconButton

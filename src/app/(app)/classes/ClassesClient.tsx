@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useDeferredValue } from "react"
-import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -15,8 +14,10 @@ import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import EntityRow from "@/components/EntityRow"
 import FormDialog from "@/components/FormDialog"
-import { useEntityDialog } from "@/hooks/useEntityDialog"
+import { useCrudDialogs } from "@/hooks/useCrudDialogs"
+import { teacherName } from "@/lib/teacherName"
 
 type Teacher = { id: string; firstName: string; lastName: string; displayName?: string | null }
 
@@ -36,14 +37,71 @@ type Props = {
 }
 
 const emptyForm = { name: "", schedule: "", teacherId: "" }
+type FormState = typeof emptyForm
+
+function ClassForm({
+  form,
+  onChange,
+  teachers,
+}: {
+  form: FormState
+  onChange: (f: FormState) => void
+  teachers: Teacher[]
+}) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <TextField
+        label="Nom du cours"
+        value={form.name}
+        onChange={(e) => onChange({ ...form, name: e.target.value })}
+        required
+        fullWidth
+        size="small"
+        autoFocus
+      />
+      <TextField
+        label="Horaire"
+        placeholder="Lundi 18h-19h"
+        value={form.schedule}
+        onChange={(e) => onChange({ ...form, schedule: e.target.value })}
+        required
+        fullWidth
+        size="small"
+      />
+      <TextField
+        select
+        label="Professeur"
+        value={form.teacherId}
+        onChange={(e) => onChange({ ...form, teacherId: e.target.value })}
+        required
+        fullWidth
+        size="small"
+      >
+        {teachers.map((t) => (
+          <MenuItem key={t.id} value={t.id}>
+            {t.firstName} {t.lastName}
+          </MenuItem>
+        ))}
+      </TextField>
+    </Box>
+  )
+}
 
 export default function ClassesClient({ classes, teachers, seasonId }: Props) {
-  const router = useRouter()
+  const crud = useCrudDialogs<Class>({
+    items: classes,
+    createUrl: "/api/classes",
+    editUrl: (c) => `/api/classes/${c.id}`,
+    deleteUrl: (c) => `/api/classes/${c.id}`,
+  })
 
   const [searchText, setSearchText] = useState("")
   const [teacherFilter, setTeacherFilter] = useState("")
   const [sortBy, setSortBy] = useState<"name" | "schedule">("name")
   const deferredSearch = useDeferredValue(searchText)
+
+  const [createForm, setCreateForm] = useState(emptyForm)
+  const [editForm, setEditForm] = useState(emptyForm)
 
   const filteredClasses = classes
     .filter((cls) => {
@@ -56,85 +114,20 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
     })
     .toSorted((a, b) => a[sortBy].localeCompare(b[sortBy], "fr"))
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState(emptyForm)
-  const [createError, setCreateError] = useState<string | null>(null)
-  const [createLoading, setCreateLoading] = useState(false)
-
-  const [editForm, setEditForm] = useState(emptyForm)
-  const [editError, setEditError] = useState<string | null>(null)
-  const [editLoading, setEditLoading] = useState(false)
-
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  const editDialog = useEntityDialog(classes)
-  const deleteDialog = useEntityDialog(classes)
-
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    setCreateError(null)
-    setCreateLoading(true)
-    const res = await fetch("/api/classes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...createForm, seasonId }),
-    })
-    setCreateLoading(false)
-    if (res.status === 201) {
-      setCreateOpen(false)
-      setCreateForm(emptyForm)
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setCreateError(data.error ?? "Une erreur est survenue.")
+    const ok = await crud.submitCreate({ ...createForm, seasonId })
+    if (ok) setCreateForm(emptyForm)
   }
 
   function openEdit(cls: Class) {
-    editDialog.open(cls)
+    crud.openEdit(cls)
     setEditForm({ name: cls.name, schedule: cls.schedule, teacherId: cls.teacherId })
-    setEditError(null)
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editDialog.selected) return
-    setEditError(null)
-    setEditLoading(true)
-    const res = await fetch(`/api/classes/${editDialog.selected.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editForm),
-    })
-    setEditLoading(false)
-    if (res.ok) {
-      editDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setEditError(data.error ?? "Une erreur est survenue.")
-  }
-
-  function openDelete(cls: Class) {
-    deleteDialog.open(cls)
-    setDeleteError(null)
-  }
-
-  async function handleDelete() {
-    if (!deleteDialog.selected) return
-    setDeleteError(null)
-    setDeleteLoading(true)
-    const res = await fetch(`/api/classes/${deleteDialog.selected.id}`, { method: "DELETE" })
-    setDeleteLoading(false)
-    if (res.status === 204) {
-      deleteDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setDeleteError(data.error ?? "Une erreur est survenue.")
+    await crud.submitEdit(editForm)
   }
 
   return (
@@ -159,8 +152,7 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
             sx={{ mt: 0.5, flexShrink: 0 }}
             onClick={() => {
               setCreateForm(emptyForm)
-              setCreateError(null)
-              setCreateOpen(true)
+              crud.openCreate()
             }}
           >
             Ajouter un cours
@@ -229,122 +221,64 @@ export default function ClassesClient({ classes, teachers, seasonId }: Props) {
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {filteredClasses.map((cls) => (
-            <Box
+            <EntityRow
               key={cls.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1.5,
-                borderRadius: 1,
-                "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
-              }}
+              actions={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <IconButton size="small" onClick={() => openEdit(cls)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => crud.openDelete(cls)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              }
             >
               <Box>
                 <Typography variant="body1">{cls.name}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {cls.schedule} · {cls.teacher.displayName ?? `${cls.teacher.firstName} ${cls.teacher.lastName}`}
+                  {cls.schedule} · {teacherName(cls.teacher)}
                 </Typography>
               </Box>
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <IconButton size="small" onClick={() => openEdit(cls)}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => openDelete(cls)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
+            </EntityRow>
           ))}
         </Box>
       )}
 
       <FormDialog
-        open={createOpen}
+        open={crud.createOpen}
         title="Nouveau cours"
         submitLabel="Créer"
-        loading={createLoading}
-        error={createError}
-        onClose={() => setCreateOpen(false)}
+        loading={crud.createLoading}
+        error={crud.createError}
+        onClose={crud.closeCreate}
         onSubmit={handleCreate}
       >
         <ClassForm form={createForm} onChange={setCreateForm} teachers={teachers} />
       </FormDialog>
 
       <FormDialog
-        open={!!editDialog.selected}
+        open={!!crud.editDialog.selected}
         title="Modifier le cours"
         submitLabel="Enregistrer"
-        loading={editLoading}
-        error={editError}
-        onClose={editDialog.close}
+        loading={crud.editLoading}
+        error={crud.editError}
+        onClose={crud.closeEdit}
         onSubmit={handleEdit}
       >
         <ClassForm form={editForm} onChange={setEditForm} teachers={teachers} />
       </FormDialog>
 
       <ConfirmDialog
-        open={!!deleteDialog.selected}
+        open={!!crud.deleteDialog.selected}
         title="Supprimer le cours"
-        message={<>Supprimer le cours «&nbsp;{deleteDialog.displaySelected?.name}&nbsp;» ?</>}
+        message={<>Supprimer le cours «&nbsp;{crud.deleteDialog.displaySelected?.name}&nbsp;» ?</>}
         confirmLabel="Supprimer"
-        loading={deleteLoading}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onClose={deleteDialog.close}
+        loading={crud.deleteLoading}
+        error={crud.deleteError}
+        onConfirm={crud.confirmDelete}
+        onClose={crud.closeDelete}
       />
     </>
-  )
-}
-
-type FormState = { name: string; schedule: string; teacherId: string }
-
-function ClassForm({
-  form,
-  onChange,
-  teachers,
-}: {
-  form: FormState
-  onChange: (f: FormState) => void
-  teachers: Teacher[]
-}) {
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <TextField
-        label="Nom du cours"
-        value={form.name}
-        onChange={(e) => onChange({ ...form, name: e.target.value })}
-        required
-        fullWidth
-        size="small"
-        autoFocus
-      />
-      <TextField
-        label="Horaire"
-        placeholder="Lundi 18h-19h"
-        value={form.schedule}
-        onChange={(e) => onChange({ ...form, schedule: e.target.value })}
-        required
-        fullWidth
-        size="small"
-      />
-      <TextField
-        select
-        label="Professeur"
-        value={form.teacherId}
-        onChange={(e) => onChange({ ...form, teacherId: e.target.value })}
-        required
-        fullWidth
-        size="small"
-      >
-        {teachers.map((t) => (
-          <MenuItem key={t.id} value={t.id}>
-            {t.firstName} {t.lastName}
-          </MenuItem>
-        ))}
-      </TextField>
-    </Box>
   )
 }

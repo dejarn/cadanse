@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -14,8 +13,9 @@ import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import EntityRow from "@/components/EntityRow"
 import FormDialog from "@/components/FormDialog"
-import { useEntityDialog } from "@/hooks/useEntityDialog"
+import { useCrudDialogs } from "@/hooks/useCrudDialogs"
 
 type Season = {
   id: string
@@ -27,95 +27,37 @@ type Season = {
 type Props = { seasons: Season[] }
 
 export default function SeasonsClient({ seasons }: Props) {
-  const router = useRouter()
+  const crud = useCrudDialogs<Season>({
+    items: seasons,
+    createUrl: "/api/seasons",
+    editUrl: (s) => `/api/seasons/${s.id}`,
+    deleteUrl: (s) => `/api/seasons/${s.id}`,
+  })
 
-  const [createOpen, setCreateOpen] = useState(false)
   const [createLabel, setCreateLabel] = useState("")
-  const [createError, setCreateError] = useState<string | null>(null)
-  const [createLoading, setCreateLoading] = useState(false)
-
   const [editLabel, setEditLabel] = useState("")
-  const [editError, setEditError] = useState<string | null>(null)
-  const [editLoading, setEditLoading] = useState(false)
-
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
   const [activatingId, setActivatingId] = useState<string | null>(null)
-  const editDialog = useEntityDialog(seasons)
-  const deleteDialog = useEntityDialog(seasons)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    setCreateError(null)
-    setCreateLoading(true)
-    const res = await fetch("/api/seasons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ label: createLabel }),
-    })
-    setCreateLoading(false)
-    if (res.status === 201) {
-      setCreateOpen(false)
-      setCreateLabel("")
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setCreateError(data.error ?? "Une erreur est survenue.")
+    const ok = await crud.submitCreate({ label: createLabel })
+    if (ok) setCreateLabel("")
   }
 
   function openEdit(season: Season) {
-    editDialog.open(season)
+    crud.openEdit(season)
     setEditLabel(season.label)
-    setEditError(null)
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editDialog.selected) return
-    setEditError(null)
-    setEditLoading(true)
-    const res = await fetch(`/api/seasons/${editDialog.selected.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ label: editLabel }),
-    })
-    setEditLoading(false)
-    if (res.ok) {
-      editDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setEditError(data.error ?? "Une erreur est survenue.")
-  }
-
-  function openDelete(season: Season) {
-    deleteDialog.open(season)
-    setDeleteError(null)
-  }
-
-  async function handleDelete() {
-    if (!deleteDialog.selected) return
-    setDeleteError(null)
-    setDeleteLoading(true)
-    const res = await fetch(`/api/seasons/${deleteDialog.selected.id}`, { method: "DELETE" })
-    setDeleteLoading(false)
-    if (res.status === 204) {
-      deleteDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setDeleteError(data.error ?? "Une erreur est survenue.")
+    await crud.submitEdit({ label: editLabel })
   }
 
   async function handleActivate(id: string) {
     setActivatingId(id)
     await fetch(`/api/seasons/${id}/activate`, { method: "POST" })
     setActivatingId(null)
-    router.refresh()
   }
 
   return (
@@ -136,8 +78,7 @@ export default function SeasonsClient({ seasons }: Props) {
             startIcon={<AddIcon />}
             onClick={() => {
               setCreateLabel("")
-              setCreateError(null)
-              setCreateOpen(true)
+              crud.openCreate()
             }}
           >
             Ajouter une saison
@@ -156,17 +97,35 @@ export default function SeasonsClient({ seasons }: Props) {
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {seasons.map((season) => (
-            <Box
+            <EntityRow
               key={season.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1.5,
-                borderRadius: 1,
-                "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
-              }}
+              actions={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                    {new Date(season.createdAt).toLocaleDateString("fr-FR")}
+                  </Typography>
+
+                  {!season.isActive ? (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={activatingId === season.id}
+                      onClick={() => handleActivate(season.id)}
+                      sx={{ fontSize: 11, py: 0.25, px: 1, minWidth: 0 }}
+                    >
+                      {activatingId === season.id ? <CircularProgress size={12} color="inherit" /> : "Activer"}
+                    </Button>
+                  ) : null}
+
+                  <IconButton size="small" onClick={() => openEdit(season)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+
+                  <IconButton size="small" onClick={() => crud.openDelete(season)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              }
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <Typography variant="body1" sx={{ fontWeight: season.isActive ? 600 : 400 }}>
@@ -187,44 +146,18 @@ export default function SeasonsClient({ seasons }: Props) {
                   />
                 ) : null}
               </Box>
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                  {new Date(season.createdAt).toLocaleDateString("fr-FR")}
-                </Typography>
-
-                {!season.isActive ? (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={activatingId === season.id}
-                    onClick={() => handleActivate(season.id)}
-                    sx={{ fontSize: 11, py: 0.25, px: 1, minWidth: 0 }}
-                  >
-                    {activatingId === season.id ? <CircularProgress size={12} color="inherit" /> : "Activer"}
-                  </Button>
-                ) : null}
-
-                <IconButton size="small" onClick={() => openEdit(season)}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-
-                <IconButton size="small" onClick={() => openDelete(season)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
+            </EntityRow>
           ))}
         </Box>
       )}
 
       <FormDialog
-        open={createOpen}
+        open={crud.createOpen}
         title="Nouvelle saison"
         submitLabel="Créer"
-        loading={createLoading}
-        error={createError}
-        onClose={() => setCreateOpen(false)}
+        loading={crud.createLoading}
+        error={crud.createError}
+        onClose={crud.closeCreate}
         onSubmit={handleCreate}
       >
         <TextField
@@ -240,12 +173,12 @@ export default function SeasonsClient({ seasons }: Props) {
       </FormDialog>
 
       <FormDialog
-        open={!!editDialog.selected}
+        open={!!crud.editDialog.selected}
         title="Renommer la saison"
         submitLabel="Enregistrer"
-        loading={editLoading}
-        error={editError}
-        onClose={editDialog.close}
+        loading={crud.editLoading}
+        error={crud.editError}
+        onClose={crud.closeEdit}
         onSubmit={handleEdit}
       >
         <TextField
@@ -260,14 +193,14 @@ export default function SeasonsClient({ seasons }: Props) {
       </FormDialog>
 
       <ConfirmDialog
-        open={!!deleteDialog.selected}
+        open={!!crud.deleteDialog.selected}
         title="Supprimer la saison"
-        message={<>Supprimer la saison «&nbsp;{deleteDialog.displaySelected?.label}&nbsp;» ?</>}
+        message={<>Supprimer la saison «&nbsp;{crud.deleteDialog.displaySelected?.label}&nbsp;» ?</>}
         confirmLabel="Supprimer"
-        loading={deleteLoading}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onClose={deleteDialog.close}
+        loading={crud.deleteLoading}
+        error={crud.deleteError}
+        onConfirm={crud.confirmDelete}
+        onClose={crud.closeDelete}
       />
     </>
   )

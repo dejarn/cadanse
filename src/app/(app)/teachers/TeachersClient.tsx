@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -12,108 +11,83 @@ import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import EntityRow from "@/components/EntityRow"
 import FormDialog from "@/components/FormDialog"
-import { useEntityDialog } from "@/hooks/useEntityDialog"
+import { useCrudDialogs } from "@/hooks/useCrudDialogs"
+import { teacherName } from "@/lib/teacherName"
 
-type Teacher = {
-  id: string
-  firstName: string
-  lastName: string
-  displayName: string | null
-}
+type Teacher = { id: string; firstName: string; lastName: string; displayName: string | null }
 
 type Props = { teachers: Teacher[] }
 
+const emptyForm = { firstName: "", lastName: "", displayName: "" }
+type FormState = typeof emptyForm
+
+function TeacherForm({ form, onChange }: { form: FormState; onChange: (f: FormState) => void }) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <TextField
+        label="Prénom"
+        value={form.firstName}
+        onChange={(e) => onChange({ ...form, firstName: e.target.value })}
+        required
+        fullWidth
+        size="small"
+        autoFocus
+      />
+      <TextField
+        label="Nom"
+        value={form.lastName}
+        onChange={(e) => onChange({ ...form, lastName: e.target.value })}
+        required
+        fullWidth
+        size="small"
+      />
+      <TextField
+        label="Nom affiché (optionnel)"
+        value={form.displayName}
+        onChange={(e) => onChange({ ...form, displayName: e.target.value })}
+        fullWidth
+        size="small"
+        helperText="Si renseigné, remplace prénom + nom partout dans l'app."
+      />
+    </Box>
+  )
+}
+
 export default function TeachersClient({ teachers }: Props) {
-  const router = useRouter()
+  const crud = useCrudDialogs<Teacher>({
+    items: teachers,
+    createUrl: "/api/teachers",
+    editUrl: (t) => `/api/teachers/${t.id}`,
+    deleteUrl: (t) => `/api/teachers/${t.id}`,
+  })
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createFirst, setCreateFirst] = useState("")
-  const [createLast, setCreateLast] = useState("")
-  const [createDisplay, setCreateDisplay] = useState("")
-  const [createError, setCreateError] = useState<string | null>(null)
-  const [createLoading, setCreateLoading] = useState(false)
-
-  const [editFirst, setEditFirst] = useState("")
-  const [editLast, setEditLast] = useState("")
-  const [editDisplay, setEditDisplay] = useState("")
-  const [editError, setEditError] = useState<string | null>(null)
-  const [editLoading, setEditLoading] = useState(false)
-
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  const editDialog = useEntityDialog(teachers)
-  const deleteDialog = useEntityDialog(teachers)
+  const [createForm, setCreateForm] = useState(emptyForm)
+  const [editForm, setEditForm] = useState(emptyForm)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    setCreateError(null)
-    setCreateLoading(true)
-    const res = await fetch("/api/teachers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: createFirst, lastName: createLast, displayName: createDisplay || null }),
+    const ok = await crud.submitCreate({
+      firstName: createForm.firstName,
+      lastName: createForm.lastName,
+      displayName: createForm.displayName || null,
     })
-    setCreateLoading(false)
-    if (res.status === 201) {
-      setCreateOpen(false)
-      setCreateFirst("")
-      setCreateLast("")
-      setCreateDisplay("")
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setCreateError(data.error ?? "Une erreur est survenue.")
+    if (ok) setCreateForm(emptyForm)
   }
 
   function openEdit(teacher: Teacher) {
-    editDialog.open(teacher)
-    setEditFirst(teacher.firstName)
-    setEditLast(teacher.lastName)
-    setEditDisplay(teacher.displayName ?? "")
-    setEditError(null)
+    crud.openEdit(teacher)
+    setEditForm({ firstName: teacher.firstName, lastName: teacher.lastName, displayName: teacher.displayName ?? "" })
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editDialog.selected) return
-    setEditError(null)
-    setEditLoading(true)
-    const res = await fetch(`/api/teachers/${editDialog.selected.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: editFirst, lastName: editLast, displayName: editDisplay || null }),
+    await crud.submitEdit({
+      firstName: editForm.firstName,
+      lastName: editForm.lastName,
+      displayName: editForm.displayName || null,
     })
-    setEditLoading(false)
-    if (res.ok) {
-      editDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setEditError(data.error ?? "Une erreur est survenue.")
-  }
-
-  function openDelete(teacher: Teacher) {
-    deleteDialog.open(teacher)
-    setDeleteError(null)
-  }
-
-  async function handleDelete() {
-    if (!deleteDialog.selected) return
-    setDeleteError(null)
-    setDeleteLoading(true)
-    const res = await fetch(`/api/teachers/${deleteDialog.selected.id}`, { method: "DELETE" })
-    setDeleteLoading(false)
-    if (res.status === 204) {
-      deleteDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setDeleteError(data.error ?? "Une erreur est survenue.")
   }
 
   return (
@@ -133,10 +107,8 @@ export default function TeachersClient({ teachers }: Props) {
             size="small"
             startIcon={<AddIcon />}
             onClick={() => {
-              setCreateFirst("")
-              setCreateLast("")
-              setCreateError(null)
-              setCreateOpen(true)
+              setCreateForm(emptyForm)
+              crud.openCreate()
             }}
           >
             Ajouter un professeur
@@ -155,21 +127,23 @@ export default function TeachersClient({ teachers }: Props) {
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {teachers.map((teacher) => (
-            <Box
+            <EntityRow
               key={teacher.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1.5,
-                borderRadius: 1,
-                "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
-              }}
+              actions={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <IconButton size="small" onClick={() => openEdit(teacher)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+
+                  <IconButton size="small" onClick={() => crud.openDelete(teacher)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              }
             >
               <Box>
                 <Typography variant="body1">
-                  {teacher.displayName ?? `${teacher.firstName} ${teacher.lastName}`}
+                  {teacherName(teacher)}
                 </Typography>
                 {teacher.displayName && (
                   <Typography variant="caption" color="text.secondary">
@@ -177,111 +151,49 @@ export default function TeachersClient({ teachers }: Props) {
                   </Typography>
                 )}
               </Box>
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <IconButton size="small" onClick={() => openEdit(teacher)}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-
-                <IconButton size="small" onClick={() => openDelete(teacher)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
+            </EntityRow>
           ))}
         </Box>
       )}
 
       <FormDialog
-        open={createOpen}
+        open={crud.createOpen}
         title="Nouveau professeur"
         submitLabel="Créer"
-        loading={createLoading}
-        error={createError}
-        onClose={() => setCreateOpen(false)}
+        loading={crud.createLoading}
+        error={crud.createError}
+        onClose={crud.closeCreate}
         onSubmit={handleCreate}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label="Prénom"
-            value={createFirst}
-            onChange={(e) => setCreateFirst(e.target.value)}
-            required
-            fullWidth
-            size="small"
-            autoFocus
-          />
-          <TextField
-            label="Nom"
-            value={createLast}
-            onChange={(e) => setCreateLast(e.target.value)}
-            required
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Nom affiché (optionnel)"
-            value={createDisplay}
-            onChange={(e) => setCreateDisplay(e.target.value)}
-            fullWidth
-            size="small"
-            helperText="Si renseigné, remplace prénom + nom partout dans l'app."
-          />
-        </Box>
+        <TeacherForm form={createForm} onChange={setCreateForm} />
       </FormDialog>
 
       <FormDialog
-        open={!!editDialog.selected}
+        open={!!crud.editDialog.selected}
         title="Modifier le professeur"
         submitLabel="Enregistrer"
-        loading={editLoading}
-        error={editError}
-        onClose={editDialog.close}
+        loading={crud.editLoading}
+        error={crud.editError}
+        onClose={crud.closeEdit}
         onSubmit={handleEdit}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label="Prénom"
-            value={editFirst}
-            onChange={(e) => setEditFirst(e.target.value)}
-            required
-            fullWidth
-            size="small"
-            autoFocus
-          />
-          <TextField
-            label="Nom"
-            value={editLast}
-            onChange={(e) => setEditLast(e.target.value)}
-            required
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Nom affiché (optionnel)"
-            value={editDisplay}
-            onChange={(e) => setEditDisplay(e.target.value)}
-            fullWidth
-            size="small"
-            helperText="Si renseigné, remplace prénom + nom partout dans l'app."
-          />
-        </Box>
+        <TeacherForm form={editForm} onChange={setEditForm} />
       </FormDialog>
 
       <ConfirmDialog
-        open={!!deleteDialog.selected}
+        open={!!crud.deleteDialog.selected}
         title="Supprimer le professeur"
         message={
           <>
-            Supprimer «&nbsp;{deleteDialog.displaySelected?.firstName} {deleteDialog.displaySelected?.lastName}
+            Supprimer «&nbsp;{crud.deleteDialog.displaySelected?.firstName} {crud.deleteDialog.displaySelected?.lastName}
             &nbsp;» ?
           </>
         }
         confirmLabel="Supprimer"
-        loading={deleteLoading}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onClose={deleteDialog.close}
+        loading={crud.deleteLoading}
+        error={crud.deleteError}
+        onConfirm={crud.confirmDelete}
+        onClose={crud.closeDelete}
       />
     </>
   )

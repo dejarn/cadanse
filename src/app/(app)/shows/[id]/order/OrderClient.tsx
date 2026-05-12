@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import React, { useMemo, useState } from "react"
 import Link from "next/link"
 import {
   DndContext,
@@ -11,13 +10,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  type SortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
+import { SortableContext, type SortingStrategy } from "@dnd-kit/sortable"
 import Alert from "@mui/material/Alert"
 import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
@@ -33,16 +26,17 @@ import AddIcon from "@mui/icons-material/Add"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh"
 import DeleteIcon from "@mui/icons-material/Delete"
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator"
 import EditIcon from "@mui/icons-material/Edit"
 import GroupIcon from "@mui/icons-material/Group"
 import LiveTvIcon from "@mui/icons-material/LiveTv"
-import LockIcon from "@mui/icons-material/Lock"
-import LockOpenIcon from "@mui/icons-material/LockOpen"
-import RemoveIcon from "@mui/icons-material/Remove"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import DurationStepper from "@/components/DurationStepper"
+import EntityRow from "@/components/EntityRow"
 import FormDialog from "@/components/FormDialog"
-import { useEntityDialog } from "@/hooks/useEntityDialog"
+import SortableActRow from "./SortableActRow"
+import { useCrudDialogs } from "@/hooks/useCrudDialogs"
+import { applyDragWithLocks } from "@/lib/drag-with-locks"
+import { teacherName } from "@/lib/teacherName"
 import type { Act, ActPosition, Class, Show, Teacher } from "@prisma/client"
 
 type ActWithClass = Act & { class: (Class & { teacher: Teacher }) | null }
@@ -59,256 +53,79 @@ interface Props {
 
 const emptyForm = { name: "", classId: "", durationMin: "", durationSec: "" }
 
-// Locked acts stay at their indices; unlocked acts flow around them.
-function applyDragWithLocks(
-  prev: string[],
-  activeId: string,
-  overId: string,
-  lockedIds: Set<string>,
-): string[] {
-  if (lockedIds.has(activeId)) return prev
+type ActFormState = typeof emptyForm
 
-  const lockedPositions = new Map<string, number>()
-  for (const id of lockedIds) lockedPositions.set(id, prev.indexOf(id))
-
-  const unlocked = prev.filter((id) => !lockedIds.has(id))
-  const oldIdx = unlocked.indexOf(activeId)
-
-  let newIdx: number
-  if (lockedIds.has(overId)) {
-    const activeFullIdx = prev.indexOf(activeId)
-    const overFullIdx = prev.indexOf(overId)
-    const rest = unlocked.filter((id) => id !== activeId)
-    if (activeFullIdx < overFullIdx) {
-      newIdx = rest.filter((id) => prev.indexOf(id) < overFullIdx).length
-    } else {
-      newIdx = rest.filter((id) => prev.indexOf(id) <= overFullIdx).length
-    }
-  } else {
-    newIdx = unlocked.indexOf(overId)
-  }
-
-  if (oldIdx === newIdx) return prev
-
-  const newUnlocked = arrayMove(unlocked, oldIdx, newIdx)
-
-  const result = new Array<string>(prev.length)
-  for (const [id, idx] of lockedPositions) result[idx] = id
-  let ui = 0
-  for (let i = 0; i < result.length; i++) {
-    if (!result[i]) result[i] = newUnlocked[ui++]
-  }
-  return result
-}
-
-function DurationStepper({
-  value,
+function ActFormFields({
+  form,
   onChange,
-  label,
-  max,
+  classes,
 }: {
-  value: string
-  onChange: (v: string) => void
-  label: string
-  max?: number
+  form: ActFormState
+  onChange: (f: ActFormState) => void
+  classes: { id: string; name: string; schedule: string }[]
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const num = parseInt(value || "0", 10)
-  const dec = () => onChange(String(Math.max(0, num - 1)))
-  const inc = () => onChange(String(max !== undefined ? Math.min(max, num + 1) : num + 1))
-
-  function startEdit() {
-    setDraft(num > 0 ? String(num) : "")
-    setEditing(true)
-    setTimeout(() => { inputRef.current?.select() }, 0)
-  }
-
-  function commitEdit() {
-    const parsed = parseInt(draft, 10)
-    if (!isNaN(parsed)) {
-      const clamped = max !== undefined ? Math.min(max, Math.max(0, parsed)) : Math.max(0, parsed)
-      onChange(String(clamped))
-    }
-    setEditing(false)
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") commitEdit()
-    if (e.key === "Escape") setEditing(false)
-  }
-
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.75 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <IconButton
-          onClick={dec}
-          sx={{ border: "1px solid", borderColor: "divider", width: 40, height: 40 }}
-        >
-          <RemoveIcon fontSize="small" />
-        </IconButton>
-        <Box
-          onClick={startEdit}
-          sx={{
-            minWidth: 64,
-            textAlign: "center",
-            border: "1px solid",
-            borderColor: editing ? "primary.main" : "rgba(212,168,83,0.4)",
-            borderRadius: 1.5,
-            px: 2,
-            py: 1,
-            cursor: "text",
-            position: "relative",
-          }}
-        >
-          {editing ? (
-            <Box
-              component="input"
-              ref={inputRef}
-              type="number"
-              inputMode="numeric"
-              value={draft}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
-              onBlur={commitEdit}
-              onKeyDown={handleKeyDown}
-              sx={{
-                width: "100%",
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "1.75rem",
-                color: "primary.main",
-                fontWeight: 500,
-                lineHeight: 1,
-                textAlign: "center",
-                fontFamily: "inherit",
-                p: 0,
-                "appearance": "textfield",
-                "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": { display: "none" },
-              }}
-            />
-          ) : (
-            <Typography
-              sx={{
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "1.75rem",
-                color: "primary.main",
-                fontWeight: 500,
-                lineHeight: 1,
-              }}
-            >
-              {String(num).padStart(2, "0")}
-            </Typography>
-          )}
-        </Box>
-        <IconButton
-          onClick={inc}
-          sx={{ border: "1px solid", borderColor: "divider", width: 40, height: 40 }}
-        >
-          <AddIcon fontSize="small" />
-        </IconButton>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <TextField
+        label="Nom du tableau"
+        value={form.name}
+        onChange={(e) => onChange({ ...form, name: e.target.value })}
+        required
+        fullWidth
+        size="small"
+        autoFocus
+      />
+      <TextField
+        select
+        label="Cours"
+        value={form.classId}
+        onChange={(e) => onChange({ ...form, classId: e.target.value })}
+        fullWidth
+        size="small"
+      >
+        <MenuItem value="">Sans cours</MenuItem>
+        {classes.map((c) => (
+          <MenuItem key={c.id} value={c.id}>
+            {c.name} · {c.schedule}
+          </MenuItem>
+        ))}
+      </TextField>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, py: 1 }}>
+        <DurationStepper
+          value={form.durationMin}
+          onChange={(v) => onChange({ ...form, durationMin: v })}
+          label="min"
+        />
+        <Typography color="text.secondary" sx={{ fontSize: "1.75rem", fontWeight: 300, lineHeight: 1, pb: 3 }}>
+          :
+        </Typography>
+        <DurationStepper
+          value={form.durationSec}
+          onChange={(v) => onChange({ ...form, durationSec: v })}
+          label="sec"
+          max={59}
+        />
       </Box>
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
     </Box>
   )
 }
 
-function SortableActRow({
-  act,
-  position,
-  isLocked,
-  onToggleLock,
-}: {
-  act: ActWithClass
-  position: number
-  isLocked: boolean
-  onToggleLock: (actId: string) => void
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: act.id,
-    disabled: isLocked,
-    animateLayoutChanges: () => false,
-  })
-
-  return (
-    <Box
-      ref={setNodeRef}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        px: 2,
-        py: 1.5,
-        borderRadius: 1,
-        opacity: isDragging ? 0.4 : 1,
-        transform: isLocked ? undefined : CSS.Transform.toString(transform),
-        transition: isLocked ? undefined : transition,
-        bgcolor: isDragging ? "rgba(212,168,83,0.08)" : "transparent",
-        "&:hover": { bgcolor: isLocked ? "transparent" : "rgba(212,168,83,0.05)" },
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <Tooltip title={isLocked ? "Déverrouiller la position" : "Verrouiller la position"}>
-          <IconButton
-            size="small"
-            onClick={() => onToggleLock(act.id)}
-            sx={{
-              color: isLocked ? "primary.main" : "text.disabled",
-              "&:hover": { color: isLocked ? "primary.light" : "text.secondary" },
-            }}
-          >
-            {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
-          </IconButton>
-        </Tooltip>
-        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 20, textAlign: "right" }}>
-          {position}.
-        </Typography>
-        <Box
-          {...attributes}
-          {...listeners}
-          sx={{
-            display: "flex",
-            color: isLocked ? "text.disabled" : "text.secondary",
-            cursor: isLocked ? "not-allowed" : "grab",
-          }}
-        >
-          <DragIndicatorIcon fontSize="small" />
-        </Box>
-        <Box>
-          <Typography variant="body1">{act.name}</Typography>
-          <Typography variant="caption" color="text.secondary">
-            {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.displayName ?? `${act.class.teacher.firstName} ${act.class.teacher.lastName}`}` : null}
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
-  )
+function parseDuration(form: ActFormState) {
+  const min = parseInt(form.durationMin || "0", 10)
+  const sec = parseInt(form.durationSec || "0", 10)
+  return (min || sec) ? min * 60 + sec : null
 }
 
 export default function OrderClient({ show, classes }: Props) {
-  const router = useRouter()
+  const crud = useCrudDialogs<ActWithClass>({
+    items: show.acts,
+    createUrl: `/api/shows/${show.id}/acts`,
+    editUrl: (act) => `/api/shows/${show.id}/acts/${act.id}`,
+    deleteUrl: (act) => `/api/shows/${show.id}/acts/${act.id}`,
+  })
 
-  // ---- Create act ----
-  const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyForm)
-  const [createError, setCreateError] = useState<string | null>(null)
-  const [createLoading, setCreateLoading] = useState(false)
-
-  // ---- Delete act ----
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-  const deleteDialog = useEntityDialog(show.acts)
-
-  // ---- Edit duration ----
-  const editDialog = useEntityDialog(show.acts)
-  const [editForm, setEditForm] = useState({ name: "", classId: "", durationMin: "", durationSec: "" })
-  const [editError, setEditError] = useState<string | null>(null)
-  const [editLoading, setEditLoading] = useState(false)
+  const [editForm, setEditForm] = useState(emptyForm)
 
   // ---- Order mode ----
   const [editMode, setEditMode] = useState(false)
@@ -369,79 +186,28 @@ export default function OrderClient({ show, classes }: Props) {
   )
 
   // ---- Handlers ----
-  function openDelete(act: ActWithClass) {
-    deleteDialog.open(act)
-    setDeleteError(null)
-  }
-
   function openEdit(act: ActWithClass) {
-    editDialog.open(act)
+    crud.openEdit(act)
     setEditForm({
       name: act.name,
       classId: act.classId ?? "",
       durationMin: act.duration != null ? String(Math.floor(act.duration / 60)) : "",
       durationSec: act.duration != null ? String(act.duration % 60) : "",
     })
-    setEditError(null)
   }
 
   async function handleEdit() {
-    setEditLoading(true)
-    setEditError(null)
-    const min = parseInt(editForm.durationMin || "0", 10)
-    const sec = parseInt(editForm.durationSec || "0", 10)
-    const duration = (min || sec) ? min * 60 + sec : null
-    const res = await fetch(`/api/shows/${show.id}/acts/${editDialog.selected!.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editForm.name, classId: editForm.classId || null, duration }),
-    })
-    if (!res.ok) { setEditError("Erreur lors de la modification"); setEditLoading(false); return }
-    setEditLoading(false)
-    editDialog.close()
-    router.refresh()
-  }
-
-  async function handleDelete() {
-    if (!deleteDialog.selected) return
-    setDeleteError(null)
-    setDeleteLoading(true)
-    const res = await fetch(`/api/shows/${show.id}/acts/${deleteDialog.selected.id}`, { method: "DELETE" })
-    setDeleteLoading(false)
-    if (res.status === 204) {
-      deleteDialog.close()
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setDeleteError(data.error ?? "Une erreur est survenue.")
+    await crud.submitEdit({ name: editForm.name, classId: editForm.classId || null, duration: parseDuration(editForm) })
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    setCreateError(null)
-    setCreateLoading(true)
-    const min = parseInt(createForm.durationMin || "0", 10)
-    const sec = parseInt(createForm.durationSec || "0", 10)
-    const duration = (min || sec) ? min * 60 + sec : null
-    const res = await fetch(`/api/shows/${show.id}/acts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: createForm.name,
-        classId: createForm.classId || null,
-        duration,
-      }),
+    const ok = await crud.submitCreate({
+      name: createForm.name,
+      classId: createForm.classId || null,
+      duration: parseDuration(createForm),
     })
-    setCreateLoading(false)
-    if (res.status === 201) {
-      setCreateOpen(false)
-      setCreateForm(emptyForm)
-      router.refresh()
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    setCreateError(data.error ?? "Une erreur est survenue.")
+    if (ok) setCreateForm(emptyForm)
   }
 
   function handleEnterEdit() {
@@ -543,7 +309,6 @@ export default function OrderClient({ show, classes }: Props) {
 
     setSaveLoading(false)
     setEditMode(false)
-    router.refresh()
   }
 
   return (
@@ -627,8 +392,7 @@ export default function OrderClient({ show, classes }: Props) {
               startIcon={<AddIcon />}
               onClick={() => {
                 setCreateForm(emptyForm)
-                setCreateError(null)
-                setCreateOpen(true)
+                crud.openCreate()
               }}
             >
               Ajouter
@@ -680,17 +444,37 @@ export default function OrderClient({ show, classes }: Props) {
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {viewOrder.map((act, index) => (
-            <Box
+            <EntityRow
               key={act.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1.5,
-                borderRadius: 1,
-                "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
-              }}
+              actions={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  {act.duration != null && (
+                    <Chip
+                      label={`${Math.floor(act.duration / 60)}:${String(act.duration % 60).padStart(2, "0")}`}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        borderColor: "rgba(212,168,83,0.35)",
+                        color: "primary.main",
+                        fontSize: "0.7rem",
+                        fontVariantNumeric: "tabular-nums",
+                        letterSpacing: "0.06em",
+                        height: 22,
+                      }}
+                    />
+                  )}
+                  <Tooltip title="Modifier">
+                    <IconButton size="small" onClick={() => openEdit(act)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Supprimer">
+                    <IconButton size="small" onClick={() => crud.openDelete(act)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              }
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                 {show.actPositions.length > 0 && (
@@ -701,157 +485,48 @@ export default function OrderClient({ show, classes }: Props) {
                 <Box>
                   <Typography variant="body1">{act.name}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {act.class ? `${act.class.name} · ${act.class.schedule} · ${act.class.teacher.displayName ?? `${act.class.teacher.firstName} ${act.class.teacher.lastName}`}` : null}
+                    {act.class ? `${act.class.name} · ${act.class.schedule} · ${teacherName(act.class.teacher)}` : null}
                   </Typography>
                 </Box>
               </Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                {act.duration != null && (
-                  <Chip
-                    label={`${Math.floor(act.duration / 60)}:${String(act.duration % 60).padStart(2, "0")}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{
-                      borderColor: "rgba(212,168,83,0.35)",
-                      color: "primary.main",
-                      fontSize: "0.7rem",
-                      fontVariantNumeric: "tabular-nums",
-                      letterSpacing: "0.06em",
-                      height: 22,
-                    }}
-                  />
-                )}
-                <Tooltip title="Modifier">
-                  <IconButton size="small" onClick={() => openEdit(act)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Supprimer">
-                  <IconButton size="small" onClick={() => openDelete(act)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
+            </EntityRow>
           ))}
         </Box>
       )}
 
       <FormDialog
-        open={createOpen}
+        open={crud.createOpen}
         title="Nouveau tableau"
         submitLabel="Créer"
-        loading={createLoading}
-        error={createError}
-        onClose={() => setCreateOpen(false)}
+        loading={crud.createLoading}
+        error={crud.createError}
+        onClose={crud.closeCreate}
         onSubmit={handleCreate}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label="Nom du tableau"
-            value={createForm.name}
-            onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-            required
-            fullWidth
-            size="small"
-            autoFocus
-          />
-          <TextField
-            select
-            label="Cours"
-            value={createForm.classId}
-            onChange={(e) => setCreateForm({ ...createForm, classId: e.target.value })}
-            fullWidth
-            size="small"
-          >
-            <MenuItem value="">Sans cours</MenuItem>
-            {classes.map((c) => (
-              <MenuItem key={c.id} value={c.id}>
-                {c.name} · {c.schedule}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, py: 1 }}>
-            <DurationStepper
-              value={createForm.durationMin}
-              onChange={(v) => setCreateForm({ ...createForm, durationMin: v })}
-              label="min"
-            />
-            <Typography color="text.secondary" sx={{ fontSize: "1.75rem", fontWeight: 300, lineHeight: 1, pb: 3 }}>
-              :
-            </Typography>
-            <DurationStepper
-              value={createForm.durationSec}
-              onChange={(v) => setCreateForm({ ...createForm, durationSec: v })}
-              label="sec"
-              max={59}
-            />
-          </Box>
-        </Box>
+        <ActFormFields form={createForm} onChange={setCreateForm} classes={classes} />
       </FormDialog>
 
       <FormDialog
-        open={!!editDialog.selected}
+        open={!!crud.editDialog.selected}
         title="Modifier le tableau"
         submitLabel="Enregistrer"
-        loading={editLoading}
-        error={editError}
-        onClose={editDialog.close}
+        loading={crud.editLoading}
+        error={crud.editError}
+        onClose={crud.closeEdit}
         onSubmit={handleEdit}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label="Nom du tableau"
-            value={editForm.name}
-            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-            required
-            fullWidth
-            size="small"
-            autoFocus
-          />
-          <TextField
-            select
-            label="Cours"
-            value={editForm.classId}
-            onChange={(e) => setEditForm({ ...editForm, classId: e.target.value })}
-            fullWidth
-            size="small"
-          >
-            <MenuItem value="">Sans cours</MenuItem>
-            {classes.map((c) => (
-              <MenuItem key={c.id} value={c.id}>
-                {c.name} · {c.schedule}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, py: 1 }}>
-            <DurationStepper
-              value={editForm.durationMin}
-              onChange={(v) => setEditForm({ ...editForm, durationMin: v })}
-              label="min"
-            />
-            <Typography color="text.secondary" sx={{ fontSize: "1.75rem", fontWeight: 300, lineHeight: 1, pb: 3 }}>
-              :
-            </Typography>
-            <DurationStepper
-              value={editForm.durationSec}
-              onChange={(v) => setEditForm({ ...editForm, durationSec: v })}
-              label="sec"
-              max={59}
-            />
-          </Box>
-        </Box>
+        <ActFormFields form={editForm} onChange={setEditForm} classes={classes} />
       </FormDialog>
 
       <ConfirmDialog
-        open={!!deleteDialog.selected}
+        open={!!crud.deleteDialog.selected}
         title="Supprimer le tableau"
-        message={<>Supprimer le tableau «&nbsp;{deleteDialog.displaySelected?.name}&nbsp;» ?</>}
+        message={<>Supprimer le tableau «&nbsp;{crud.deleteDialog.displaySelected?.name}&nbsp;» ?</>}
         confirmLabel="Supprimer"
-        loading={deleteLoading}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onClose={deleteDialog.close}
+        loading={crud.deleteLoading}
+        error={crud.deleteError}
+        onConfirm={crud.confirmDelete}
+        onClose={crud.closeDelete}
       />
     </>
   )

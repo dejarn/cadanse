@@ -10,6 +10,7 @@ import Divider from "@mui/material/Divider"
 import Tooltip from "@mui/material/Tooltip"
 import DeleteIcon from "@mui/icons-material/Delete"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import EntityRow from "@/components/EntityRow"
 import InviteButton from "./InviteButton"
 import { useEntityDialog } from "@/hooks/useEntityDialog"
 
@@ -77,17 +78,22 @@ export default function UsersClient({ users, currentUserId }: Props) {
           {users.map((user) => {
             const isSelf = user.id === currentUserId
             return (
-              <Box
+              <EntityRow
                 key={user.id}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 2,
-                  py: 1.5,
-                  borderRadius: 1,
-                  "&:hover": { bgcolor: "rgba(212,168,83,0.05)" },
-                }}
+                actions={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                      {user.createdAt.toLocaleDateString("fr-FR")}
+                    </Typography>
+                    <Tooltip title={isSelf ? "Impossible de supprimer son propre compte" : "Supprimer"}>
+                      <span>
+                        <IconButton size="small" onClick={() => openDelete(user)} disabled={isSelf}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                }
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <Typography variant="body1" sx={{ fontWeight: isSelf ? 600 : 400 }}>
@@ -117,20 +123,7 @@ export default function UsersClient({ users, currentUserId }: Props) {
                     }}
                   />
                 </Box>
-
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                    {user.createdAt.toLocaleDateString("fr-FR")}
-                  </Typography>
-                  <Tooltip title={isSelf ? "Impossible de supprimer son propre compte" : "Supprimer"}>
-                    <span>
-                      <IconButton size="small" onClick={() => openDelete(user)} disabled={isSelf}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Box>
-              </Box>
+              </EntityRow>
             )
           })}
         </Box>
