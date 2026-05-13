@@ -19,7 +19,7 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: "Cadanse",
-  description: "Gestion d'école de danse",
+  description: "Let's dance!",
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
