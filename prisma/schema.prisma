@@ -73,6 +73,7 @@ model Student {
 
   enrollments        StudentClass[]
   showParticipations ShowParticipation[]
+  actParticipations  ActParticipation[]
 
   @@map("students")
 }
@@ -132,6 +133,7 @@ model Act {
   class        Class?        @relation(fields: [classId], references: [id])
   show         Show          @relation(fields: [showId], references: [id], onDelete: Cascade)
   actPositions ActPosition[]
+  participations ActParticipation[]
 
   @@map("acts")
 }
@@ -157,4 +159,15 @@ model ActPosition {
 
   @@id([showId, actId])
   @@map("act_positions")
+}
+
+model ActParticipation {
+  actId     String
+  studentId String
+
+  act     Act     @relation(fields: [actId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([actId, studentId])
+  @@map("act_participations")
 }

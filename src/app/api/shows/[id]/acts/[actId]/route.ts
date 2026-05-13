@@ -12,6 +12,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json()
 
   const act = await prisma.act.update({ where: { id: actId }, data: body })
+
+  // Rebuild ActParticipation when classId changes
+  if ("classId" in body) {
+    await prisma.actParticipation.deleteMany({ where: { actId } })
+
+    if (body.classId) {
+      const enrollments = await prisma.studentClass.findMany({
+        where: { classId: body.classId },
+        select: { studentId: true },
+      })
+      if (enrollments.length > 0) {
+        await prisma.actParticipation.createMany({
+          data: enrollments.map((e) => ({ actId, studentId: e.studentId })),
+          skipDuplicates: true,
+        })
+      }
+    }
+  }
+
   return NextResponse.json({ data: act })
 }
 

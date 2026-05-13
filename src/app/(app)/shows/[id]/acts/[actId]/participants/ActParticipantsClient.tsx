@@ -10,8 +10,8 @@ import TextField from "@mui/material/TextField"
 import MenuItem from "@mui/material/MenuItem"
 import Checkbox from "@mui/material/Checkbox"
 import Alert from "@mui/material/Alert"
-import Chip from "@mui/material/Chip"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
+
 type Student = {
   id: string
   firstName: string
@@ -20,19 +20,16 @@ type Student = {
 }
 
 type ClassItem = { id: string; name: string }
-type ActItem = { id: string; name: string }
-type ActParticipationItem = { actId: string; studentId: string }
 
 interface Props {
+  act: { id: string; name: string }
   show: { id: string; name: string }
   students: Student[]
   participatingIds: string[]
   classes: ClassItem[]
-  acts: ActItem[]
-  actParticipations: ActParticipationItem[]
 }
 
-export default function ParticipantsClient({ show, students, participatingIds, classes, acts, actParticipations }: Props) {
+export default function ActParticipantsClient({ act, show, students, participatingIds, classes }: Props) {
   const [checked, setChecked] = useState<Set<string>>(new Set(participatingIds))
   const [error, setError] = useState<string | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -57,7 +54,7 @@ export default function ParticipantsClient({ show, students, participatingIds, c
     else next.add(studentId)
     setChecked(next)
 
-    const res = await fetch(`/api/shows/${show.id}/participants`, {
+    const res = await fetch(`/api/shows/${show.id}/acts/${act.id}/participants`, {
       method: isParticipating ? "DELETE" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studentId }),
@@ -72,14 +69,6 @@ export default function ParticipantsClient({ show, students, participatingIds, c
     }
   }
 
-  const actMap = new Map(acts.map((a) => [a.id, a.name]))
-  const studentActsMap = new Map<string, string[]>()
-  for (const ap of actParticipations) {
-    const list = studentActsMap.get(ap.studentId) ?? []
-    list.push(ap.actId)
-    studentActsMap.set(ap.studentId, list)
-  }
-
   return (
     <>
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3 }}>
@@ -88,7 +77,7 @@ export default function ParticipantsClient({ show, students, participatingIds, c
             Participants
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {show.name}
+            {act.name} · {show.name}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {checked.size} participant{checked.size !== 1 ? "s" : ""} sur {students.length} élève{students.length !== 1 ? "s" : ""}
@@ -132,27 +121,6 @@ export default function ParticipantsClient({ show, students, participatingIds, c
         </TextField>
       </Box>
 
-      {acts.length > 0 && (
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
-          {acts.map((act) => (
-            <Chip
-              key={act.id}
-              label={act.name}
-              component={Link}
-              href={`/shows/${show.id}/acts/${act.id}/participants`}
-              clickable
-              variant="outlined"
-              size="small"
-              sx={{
-                borderColor: "rgba(212,168,83,0.35)",
-                color: "primary.main",
-                "&:hover": { borderColor: "primary.main" },
-              }}
-            />
-          ))}
-        </Box>
-      )}
-
       {filteredStudents.length === 0 ? (
         <Box sx={{ px: 2, py: 1.5, borderRadius: 1, minHeight: 56, display: "flex", alignItems: "center" }}>
           <Typography variant="body2" color="text.secondary">
@@ -187,11 +155,6 @@ export default function ParticipantsClient({ show, students, participatingIds, c
               <Typography variant="body1">
                 {student.firstName} {student.lastName}
               </Typography>
-              {studentActsMap.has(student.id) && (
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                  ({studentActsMap.get(student.id)!.map((aid) => actMap.get(aid)).filter(Boolean).join(", ")})
-                </Typography>
-              )}
             </Box>
           ))}
         </Box>

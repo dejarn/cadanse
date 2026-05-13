@@ -29,5 +29,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     data: { name, classId, showId, fixedPosition, duration },
   })
 
+  // Auto-populate ActParticipation from class enrollments
+  if (classId) {
+    const enrollments = await prisma.studentClass.findMany({
+      where: { classId },
+      select: { studentId: true },
+    })
+    if (enrollments.length > 0) {
+      await prisma.actParticipation.createMany({
+        data: enrollments.map((e) => ({ actId: act.id, studentId: e.studentId })),
+        skipDuplicates: true,
+      })
+    }
+  }
+
   return NextResponse.json({ data: act }, { status: 201 })
 }

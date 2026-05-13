@@ -24,7 +24,25 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id: showId } = await params
   const { studentId } = await req.json()
 
-  await prisma.showParticipation.create({ data: { showId, studentId } })
+  const [enrollments] = await Promise.all([
+    prisma.studentClass.findMany({ where: { studentId }, select: { classId: true } }),
+  ])
+  const enrolledClassIds = enrollments.map((e) => e.classId)
+
+  const matchingActs = enrolledClassIds.length > 0
+    ? await prisma.act.findMany({ where: { showId, classId: { in: enrolledClassIds } }, select: { id: true } })
+    : []
+
+  await prisma.$transaction([
+    prisma.showParticipation.create({ data: { showId, studentId } }),
+    ...(matchingActs.length > 0
+      ? [prisma.actParticipation.createMany({
+          data: matchingActs.map((a) => ({ actId: a.id, studentId })),
+          skipDuplicates: true,
+        })]
+      : []),
+  ])
+
   return NextResponse.json({ ok: true }, { status: 201 })
 }
 
@@ -35,8 +53,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id: showId } = await params
   const { studentId } = await req.json()
 
-  await prisma.showParticipation.delete({
-    where: { showId_studentId: { showId, studentId } },
-  })
+  const actIds = await prisma.act.findMany({ where: { showId }, select: { id: true } }).then((acts) => acts.map((a) => a.id))
+
+  await prisma.$transaction([
+    prisma.actParticipation.deleteMany({ where: { actId: { in: actIds }, studentId } }),
+    prisma.showParticipation.delete({ where: { showId_studentId: { showId, studentId } } }),
+  ])
   return new NextResponse(null, { status: 204 })
 }

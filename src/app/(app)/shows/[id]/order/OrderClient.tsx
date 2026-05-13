@@ -463,6 +463,11 @@ export default function OrderClient({ show, classes }: Props) {
                       }}
                     />
                   )}
+                  <Tooltip title="Participants">
+                    <IconButton size="small" component={Link} href={`/shows/${show.id}/acts/${act.id}/participants`}>
+                      <GroupIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Modifier">
                     <IconButton size="small" onClick={() => openEdit(act)}>
                       <EditIcon fontSize="small" />
