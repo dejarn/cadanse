@@ -74,6 +74,7 @@ model Student {
   enrollments        StudentClass[]
   showParticipations ShowParticipation[]
   actParticipations  ActParticipation[]
+  placements         Placement[]
 
   @@map("students")
 }
@@ -134,6 +135,7 @@ model Act {
   show         Show          @relation(fields: [showId], references: [id], onDelete: Cascade)
   actPositions ActPosition[]
   participations ActParticipation[]
+  scenes        Scene[]
 
   @@map("acts")
 }
@@ -164,10 +166,38 @@ model ActPosition {
 model ActParticipation {
   actId     String
   studentId String
+  color     Int      @default(0)
 
   act     Act     @relation(fields: [actId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@id([actId, studentId])
   @@map("act_participations")
+}
+
+model Scene {
+  id        String   @id @default(uuid())
+  name      String
+  order     Int
+  actId     String
+  createdAt DateTime @default(now())
+
+  act        Act         @relation(fields: [actId], references: [id], onDelete: Cascade)
+  placements Placement[]
+
+  @@map("scenes")
+}
+
+model Placement {
+  id        String @id @default(uuid())
+  x         Float
+  y         Float
+  sceneId   String
+  studentId String
+
+  scene   Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sceneId, studentId])
+  @@map("placements")
 }

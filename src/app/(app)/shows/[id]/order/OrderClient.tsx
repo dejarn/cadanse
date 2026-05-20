@@ -27,6 +27,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh"
 import DeleteIcon from "@mui/icons-material/Delete"
 import EditIcon from "@mui/icons-material/Edit"
+import PlaceIcon from "@mui/icons-material/Place"
 import GroupIcon from "@mui/icons-material/Group"
 import LiveTvIcon from "@mui/icons-material/LiveTv"
 import ConfirmDialog from "@/components/ConfirmDialog"
@@ -466,6 +467,11 @@ export default function OrderClient({ show, classes }: Props) {
                   <Tooltip title="Participants">
                     <IconButton size="small" component={Link} href={`/shows/${show.id}/acts/${act.id}/participants`}>
                       <GroupIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Placements">
+                    <IconButton size="small" component={Link} href={`/shows/${show.id}/acts/${act.id}/placements`}>
+                      <PlaceIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Modifier">
