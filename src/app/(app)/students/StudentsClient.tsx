@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -49,6 +50,7 @@ type Props = {
 }
 
 export default function StudentsClient({ students, classes, hasActiveSeason }: Props) {
+  const router = useRouter()
   const crud = useCrudDialogs<Student>({
     items: students,
     createUrl: "/api/students",
@@ -121,6 +123,7 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
     setAddLoading(false)
     if (res.status === 201) {
       setAddClassId("")
+      router.refresh()
     } else {
       const data = await res.json().catch(() => ({}))
       setAddError(data.error ?? "Une erreur est survenue.")
@@ -141,6 +144,8 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
     if (res.status !== 204) {
       const data = await res.json().catch(() => ({}))
       setRemoveError(data.error ?? "Une erreur est survenue.")
+    } else {
+      router.refresh()
     }
   }
 

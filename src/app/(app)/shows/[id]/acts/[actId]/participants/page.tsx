@@ -11,7 +11,7 @@ export default async function ActParticipantsPage({ params }: Props) {
 
   const act = await prisma.act.findUnique({
     where: { id: actId },
-    select: { id: true, name: true, showId: true },
+    select: { id: true, name: true, showId: true, classId: true },
   })
 
   if (!act || act.showId !== showId) notFound()
@@ -49,7 +49,7 @@ export default async function ActParticipantsPage({ params }: Props) {
     <ActParticipantsClient
       act={act}
       show={show}
-      students={students.filter((s) => showParticipatingIds.has(s.id))}
+      students={students.filter((s) => showParticipatingIds.has(s.id) && (!act.classId || s.enrollments.some((e) => e.classId === act.classId)))}
       participatingIds={actParticipations.map((p) => p.studentId)}
       classes={classes}
     />

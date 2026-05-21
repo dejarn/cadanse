@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
@@ -72,6 +73,7 @@ function ShowForm({ form, onChange }: { form: FormState; onChange: (f: FormState
 }
 
 export default function ShowsClient({ shows, seasonId }: Props) {
+  const router = useRouter()
   const crud = useCrudDialogs<Show>({
     items: shows,
     createUrl: "/api/shows",
@@ -107,6 +109,7 @@ export default function ShowsClient({ shows, seasonId }: Props) {
       body: JSON.stringify({ name: show.name + " - Copie", date: show.date, seasonId }),
     })
     setDuplicateLoadingId(null)
+    router.refresh()
   }
 
   return (

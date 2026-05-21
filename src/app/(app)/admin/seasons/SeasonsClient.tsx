@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -27,6 +28,7 @@ type Season = {
 type Props = { seasons: Season[] }
 
 export default function SeasonsClient({ seasons }: Props) {
+  const router = useRouter()
   const crud = useCrudDialogs<Season>({
     items: seasons,
     createUrl: "/api/seasons",
@@ -58,6 +60,7 @@ export default function SeasonsClient({ seasons }: Props) {
     setActivatingId(id)
     await fetch(`/api/seasons/${id}/activate`, { method: "POST" })
     setActivatingId(null)
+    router.refresh()
   }
 
   return (

@@ -16,7 +16,7 @@ export default async function ParticipantsPage({ params }: Props) {
 
   if (!show) notFound()
 
-  const [students, participations, classes, acts, actParticipations] = await Promise.all([
+  const [students, participations, classes] = await Promise.all([
     prisma.student.findMany({
       orderBy: { lastName: "asc" },
       include: { enrollments: { select: { classId: true } } },
@@ -30,15 +30,6 @@ export default async function ParticipantsPage({ params }: Props) {
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
-    prisma.act.findMany({
-      where: { showId: id },
-      select: { id: true, name: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.actParticipation.findMany({
-      where: { actId: { in: await prisma.act.findMany({ where: { showId: id }, select: { id: true } }).then((a) => a.map((x) => x.id)) } },
-      select: { actId: true, studentId: true },
-    }),
   ])
 
   return (
@@ -47,8 +38,6 @@ export default async function ParticipantsPage({ params }: Props) {
       students={students}
       participatingIds={participations.map((p) => p.studentId)}
       classes={classes}
-      acts={acts}
-      actParticipations={actParticipations}
     />
   )
 }

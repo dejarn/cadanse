@@ -10,7 +10,6 @@ import TextField from "@mui/material/TextField"
 import MenuItem from "@mui/material/MenuItem"
 import Checkbox from "@mui/material/Checkbox"
 import Alert from "@mui/material/Alert"
-import Chip from "@mui/material/Chip"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 type Student = {
   id: string
@@ -20,22 +19,19 @@ type Student = {
 }
 
 type ClassItem = { id: string; name: string }
-type ActItem = { id: string; name: string }
-type ActParticipationItem = { actId: string; studentId: string }
 
 interface Props {
   show: { id: string; name: string }
   students: Student[]
   participatingIds: string[]
   classes: ClassItem[]
-  acts: ActItem[]
-  actParticipations: ActParticipationItem[]
 }
 
-export default function ParticipantsClient({ show, students, participatingIds, classes, acts, actParticipations }: Props) {
+export default function ParticipantsClient({ show, students, participatingIds, classes }: Props) {
   const [checked, setChecked] = useState<Set<string>>(new Set(participatingIds))
   const [error, setError] = useState<string | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [batchLoading, setBatchLoading] = useState(false)
   const [filterName, setFilterName] = useState("")
   const [filterClassId, setFilterClassId] = useState("")
 
@@ -72,12 +68,35 @@ export default function ParticipantsClient({ show, students, participatingIds, c
     }
   }
 
-  const actMap = new Map(acts.map((a) => [a.id, a.name]))
-  const studentActsMap = new Map<string, string[]>()
-  for (const ap of actParticipations) {
-    const list = studentActsMap.get(ap.studentId) ?? []
-    list.push(ap.actId)
-    studentActsMap.set(ap.studentId, list)
+  async function handleSelectAll() {
+    const toAdd = filteredStudents.filter((s) => !checked.has(s.id))
+    if (toAdd.length === 0 || batchLoading) return
+    setError(null)
+    setBatchLoading(true)
+
+    const prev = checked
+    let next = new Set(prev)
+    let failed = false
+
+    for (const student of toAdd) {
+      next.add(student.id)
+      setChecked(new Set(next))
+
+      const res = await fetch(`/api/shows/${show.id}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: student.id }),
+      })
+
+      if (res.status !== 201) {
+        failed = true
+        setError("Erreur lors de l'ajout en masse.")
+        break
+      }
+    }
+
+    if (failed) setChecked(prev)
+    setBatchLoading(false)
   }
 
   return (
@@ -130,28 +149,16 @@ export default function ParticipantsClient({ show, students, participatingIds, c
             <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
           ))}
         </TextField>
+        <Button
+          onClick={handleSelectAll}
+          disabled={batchLoading || filteredStudents.every((s) => checked.has(s.id))}
+          variant="outlined"
+          size="small"
+          sx={{ alignSelf: "center", whiteSpace: "nowrap" }}
+        >
+          Tout sélectionner
+        </Button>
       </Box>
-
-      {acts.length > 0 && (
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
-          {acts.map((act) => (
-            <Chip
-              key={act.id}
-              label={act.name}
-              component={Link}
-              href={`/shows/${show.id}/acts/${act.id}/participants`}
-              clickable
-              variant="outlined"
-              size="small"
-              sx={{
-                borderColor: "rgba(212,168,83,0.35)",
-                color: "primary.main",
-                "&:hover": { borderColor: "primary.main" },
-              }}
-            />
-          ))}
-        </Box>
-      )}
 
       {filteredStudents.length === 0 ? (
         <Box sx={{ px: 2, py: 1.5, borderRadius: 1, minHeight: 56, display: "flex", alignItems: "center" }}>
@@ -187,11 +194,6 @@ export default function ParticipantsClient({ show, students, participatingIds, c
               <Typography variant="body1">
                 {student.firstName} {student.lastName}
               </Typography>
-              {studentActsMap.has(student.id) && (
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                  ({studentActsMap.get(student.id)!.map((aid) => actMap.get(aid)).filter(Boolean).join(", ")})
-                </Typography>
-              )}
             </Box>
           ))}
         </Box>
