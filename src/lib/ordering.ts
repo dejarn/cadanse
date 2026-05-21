@@ -91,8 +91,6 @@ export function generateOrder(
 
   // --- Greedy phase: place most-constrained flexible acts first ---
 
-  const available = slots.map((v, i) => v === null ? i : -1).filter((i) => i !== -1)
-
   // Sort flexible acts by constraint score (most shared students with fixed acts → first)
   const fixedIds = new Set(fixed.map((f) => f.act.id))
   const flexibleSorted = [...flexible].sort((a, b) => {

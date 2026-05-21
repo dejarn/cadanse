@@ -75,7 +75,7 @@ export default function ParticipantsClient({ show, students, participatingIds, c
     setBatchLoading(true)
 
     const prev = checked
-    let next = new Set(prev)
+    const next = new Set(prev)
     let failed = false
 
     for (const student of toAdd) {
