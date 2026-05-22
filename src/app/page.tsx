@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/get-session"
 import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
 import Stack from "@mui/material/Stack"
@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography"
 import { redirect } from "next/navigation"
 
 export default async function Home() {
-  const session = await auth()
+  const session = await getSession()
   if (session) redirect("/dashboard")
 
   return (

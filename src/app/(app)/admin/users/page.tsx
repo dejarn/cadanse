@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/get-session"
 import { prisma } from "@/lib/prisma"
 import UsersClient from "./UsersClient"
 
 export default async function UsersPage() {
-  const session = await auth()
+  const session = await getSession()
   if (session?.user.role !== "SUPER_ADMIN") redirect("/")
 
   const users = await prisma.user.findMany({

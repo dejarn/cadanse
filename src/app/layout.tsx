@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Cormorant_Garamond, DM_Sans } from "next/font/google"
 import ThemeRegistry from "@/components/ThemeRegistry"
 import SessionProvider from "@/components/SessionProvider"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/get-session"
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
+  const session = await getSession()
 
   return (
     <html lang="fr" className={`${cormorant.variable} ${dmSans.variable}`}>
