@@ -98,8 +98,6 @@ export default function ParticipantsClient({ show, students, participatingIds, c
     if (failed) {
       router.refresh()
       setError("Erreur lors de l'ajout en masse.")
-    } else {
-      router.refresh()
     }
     setBatchLoading(false)
   }

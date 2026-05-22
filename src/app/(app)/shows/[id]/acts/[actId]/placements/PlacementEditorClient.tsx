@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -39,8 +38,6 @@ export default function PlacementEditorClient({
   participants,
   initialScenes,
 }: Props) {
-  const router = useRouter()
-
   const [scenes, setScenes] = useState<Scene[]>(initialScenes)
   const [activeSceneId, setActiveSceneId] = useState<string | null>(
     initialScenes[0]?.id ?? null,
@@ -299,8 +296,7 @@ export default function PlacementEditorClient({
       return next
     })
     setSaving(false)
-    router.refresh()
-  }, [dirtyScenes, scenePlacements, show.id, act.id, router])
+  }, [dirtyScenes, scenePlacements, show.id, act.id])
 
   const handleReorderScenes = useCallback(async (ids: string[]) => {
     const prev = scenes
