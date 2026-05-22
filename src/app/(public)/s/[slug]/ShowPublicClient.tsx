@@ -59,24 +59,25 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
 
   return (
     <Box>
-      {currentPosition !== null && (
+      {!connected && (
         <Box sx={{ mb: 3 }}>
-          {connected ? (
-            <Chip
-              icon={<FiberManualRecordIcon sx={{ fontSize: 10, color: "success.main" }} />}
-              label="En direct"
-              size="small"
-              variant="outlined"
-              sx={{ borderColor: "success.main", color: "success.main" }}
-            />
-          ) : (
-            <Chip
-              label="Connexion perdue — actualisation automatique…"
-              size="small"
-              variant="outlined"
-              color="error"
-            />
-          )}
+          <Chip
+            label="Connexion perdue — reconnexion en cours…"
+            size="small"
+            variant="outlined"
+            color="error"
+          />
+        </Box>
+      )}
+      {connected && currentPosition !== null && (
+        <Box sx={{ mb: 3 }}>
+          <Chip
+            icon={<FiberManualRecordIcon sx={{ fontSize: 10, color: "success.main" }} />}
+            label="En direct"
+            size="small"
+            variant="outlined"
+            sx={{ borderColor: "success.main", color: "success.main" }}
+          />
         </Box>
       )}
 

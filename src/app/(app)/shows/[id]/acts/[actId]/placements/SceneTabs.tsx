@@ -34,6 +34,7 @@ type Scene = { id: string; name: string; order: number }
 interface Props {
   scenes: Scene[]
   activeSceneId: string | null
+  dirtySceneIds?: Set<string>
   onSceneChange: (sceneId: string) => void
   onAddScene: () => void
   onDeleteScene: (sceneId: string) => void
@@ -142,6 +143,7 @@ function SortableSceneTab({
 export default function SceneTabs({
   scenes,
   activeSceneId,
+  dirtySceneIds,
   onSceneChange,
   onAddScene,
   onDeleteScene,
@@ -151,6 +153,7 @@ export default function SceneTabs({
 }: Props) {
   const [renameTarget, setRenameTarget] = useState<Scene | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [renameError, setRenameError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Scene | null>(null)
 
   const sensors = useSensors(
@@ -160,10 +163,15 @@ export default function SceneTabs({
   const openRename = (scene: Scene) => {
     setRenameTarget(scene)
     setRenameValue(scene.name)
+    setRenameError(null)
   }
 
   const submitRename = () => {
-    if (renameTarget && renameValue.trim()) {
+    if (!renameValue.trim()) {
+      setRenameError("Le nom ne peut pas être vide.")
+      return
+    }
+    if (renameTarget) {
       onRenameScene(renameTarget.id, renameValue.trim())
     }
     setRenameTarget(null)
@@ -209,7 +217,7 @@ export default function SceneTabs({
         </DndContext>
 
         <Tooltip title="Nouvelle scène">
-          <IconButton size="small" onClick={onAddScene}>
+          <IconButton size="small" onClick={onAddScene} aria-label="Ajouter une scène">
             <AddIcon />
           </IconButton>
         </Tooltip>
@@ -219,6 +227,7 @@ export default function SceneTabs({
               size="small"
               disabled={!activeSceneId}
               onClick={() => activeSceneId && onDuplicateScene(activeSceneId)}
+              aria-label="Dupliquer la scène"
             >
               <ContentCopyIcon />
             </IconButton>
@@ -230,13 +239,14 @@ export default function SceneTabs({
         open={!!renameTarget}
         title="Renommer la scène"
         submitLabel="Enregistrer"
-        onClose={() => setRenameTarget(null)}
+        error={renameError}
+        onClose={() => { setRenameTarget(null); setRenameError(null) }}
         onSubmit={submitRename}
       >
         <TextField
           autoFocus
           value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
+          onChange={(e) => { setRenameValue(e.target.value); setRenameError(null) }}
           fullWidth
           size="small"
           sx={{ pt: 1 }}
@@ -252,7 +262,8 @@ export default function SceneTabs({
               Supprimer la scène « {deleteTarget?.name} » ?
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Les placements de cette scène seront perdus.
+              Les placements de cette scène seront perdus
+              {deleteTarget && dirtySceneIds?.has(deleteTarget.id) ? ", dont des modifications non sauvegardées" : ""}.
             </Typography>
           </>
         }

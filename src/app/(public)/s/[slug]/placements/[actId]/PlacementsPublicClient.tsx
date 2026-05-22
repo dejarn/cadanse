@@ -42,6 +42,7 @@ export default function PlacementsPublicClient({ scenes }: Props) {
           size="small"
           onClick={() => setSceneIndex((i) => Math.max(0, i - 1))}
           disabled={sceneIndex === 0}
+          aria-label="Scène précédente"
         >
           <NavigateBeforeIcon />
         </IconButton>
@@ -61,6 +62,7 @@ export default function PlacementsPublicClient({ scenes }: Props) {
           size="small"
           onClick={() => setSceneIndex((i) => Math.min(scenes.length - 1, i + 1))}
           disabled={sceneIndex === scenes.length - 1}
+          aria-label="Scène suivante"
         >
           <NavigateNextIcon />
         </IconButton>

@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
+import React, { useMemo, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import useMediaQuery from "@mui/material/useMediaQuery"
 import { useTheme } from "@mui/material/styles"
 import Link from "next/link"
@@ -120,6 +121,7 @@ function parseDuration(form: ActFormState) {
 }
 
 export default function OrderClient({ show, classes }: Props) {
+  const router = useRouter()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down("md"))
 
@@ -141,6 +143,17 @@ export default function OrderClient({ show, classes }: Props) {
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // ---- Warn on unsaved navigation when in edit mode ----
+  useEffect(() => {
+    if (!editMode) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [editMode])
 
   // ---- Derived ----
   const actMap = useMemo(() => new Map(show.acts.map((a) => [a.id, a])), [show.acts])
@@ -315,6 +328,7 @@ export default function OrderClient({ show, classes }: Props) {
 
     setSaveLoading(false)
     setEditMode(false)
+    router.refresh()
   }
 
   return (

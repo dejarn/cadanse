@@ -10,7 +10,7 @@ if (!g.showEmitter) {
 export const showEmitter = g.showEmitter
 
 export type ShowPayload = {
-  acts: { id: string; name: string; position: number; className: string | null; teacherName: string | null }[]
+  acts: { id: string; name: string; position: number }[]
   currentPosition: number | null
 }
 

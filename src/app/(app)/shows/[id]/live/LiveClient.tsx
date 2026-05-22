@@ -38,12 +38,14 @@ export default function LiveClient({ showId, showName, currentPosition: initialP
   const [currentPos, setCurrentPos] = useState<number | null>(initialPosition)
   const confirmedPos = useRef<number | null>(initialPosition)
   const inFlight = useRef(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   async function setCurrentAct(position: number | null) {
     if (inFlight.current) return
     inFlight.current = true
+    setLoading(true)
     setError(null)
     setCurrentPos(position)
     const res = await fetch(`/api/shows/${showId}/current-act`, {
@@ -52,6 +54,7 @@ export default function LiveClient({ showId, showName, currentPosition: initialP
       body: JSON.stringify({ currentPosition: position }),
     })
     inFlight.current = false
+    setLoading(false)
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       setError(data.error ?? "Une erreur est survenue.")
@@ -127,7 +130,7 @@ export default function LiveClient({ showId, showName, currentPosition: initialP
             size="large"
             startIcon={<PlayCircleOutlineIcon />}
             onClick={() => acts.length > 0 && setCurrentAct(acts[0].position)}
-            disabled={acts.length === 0}
+            disabled={acts.length === 0 || loading}
             sx={{ minWidth: 220 }}
           >
             Démarrer le spectacle
@@ -139,6 +142,7 @@ export default function LiveClient({ showId, showName, currentPosition: initialP
               size="large"
               startIcon={<StopCircleOutlinedIcon />}
               onClick={() => setCurrentAct(null)}
+              disabled={loading}
               sx={{ borderColor: "error.main", color: "error.main", "&:hover": { borderColor: "error.light", color: "error.light" } }}
             >
               Arrêter
@@ -148,7 +152,7 @@ export default function LiveClient({ showId, showName, currentPosition: initialP
               size="large"
               startIcon={<SkipNextIcon />}
               onClick={handleNext}
-              disabled={!hasNext}
+              disabled={!hasNext || loading}
               sx={{ minWidth: 200 }}
             >
               Tableau suivant
@@ -209,13 +213,16 @@ export default function LiveClient({ showId, showName, currentPosition: initialP
 
                 {!isCurrent && (
                   <Tooltip title="Définir comme tableau en cours">
-                    <IconButton
-                      size="small"
-                      onClick={() => setCurrentAct(act.position)}
-                      sx={{ color: "text.disabled", "&:hover": { color: "primary.main" } }}
-                    >
-                      <PlayArrowIcon fontSize="small" />
-                    </IconButton>
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={() => setCurrentAct(act.position)}
+                        disabled={loading}
+                        sx={{ color: "text.disabled", "&:hover": { color: "primary.main" } }}
+                      >
+                        <PlayArrowIcon fontSize="small" />
+                      </IconButton>
+                    </span>
                   </Tooltip>
                 )}
               </Box>

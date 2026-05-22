@@ -87,7 +87,7 @@ export default function UsersClient({ users, currentUserId }: Props) {
                     </Typography>
                     <Tooltip title={isSelf ? "Impossible de supprimer son propre compte" : "Supprimer"}>
                       <span>
-                        <IconButton size="small" onClick={() => openDelete(user)} disabled={isSelf}>
+                        <IconButton size="small" onClick={() => openDelete(user)} disabled={isSelf} aria-label={`Supprimer ${user.username}`}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </span>

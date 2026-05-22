@@ -6,12 +6,18 @@ type Params = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await auth()
-  if (session?.user.role !== "SUPER_ADMIN") {
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params
   const body = await req.json()
+
+  const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+  if (target?.role === "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Cannot rename SUPER_ADMIN account." }, { status: 400 })
+  }
 
   const user = await prisma.user.update({
     where: { id },
@@ -24,7 +30,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await auth()
-  if (session?.user.role !== "SUPER_ADMIN") {
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

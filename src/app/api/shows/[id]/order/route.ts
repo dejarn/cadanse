@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     })
     const rows = await tx.actPosition.findMany({
       where: { showId },
-      include: { act: { include: { class: { include: { teacher: true } } } } },
+      include: { act: true },
       orderBy: { position: "asc" },
     })
     const show = await tx.show.findUnique({ where: { id: showId } })
@@ -49,10 +49,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
       id: p.actId,
       name: p.act.name,
       position: p.position,
-      className: p.act.class?.name ?? null,
-      teacherName: p.act.class
-        ? p.act.class.teacher.displayName ?? `${p.act.class.teacher.firstName} ${p.act.class.teacher.lastName}`
-        : null,
     })),
     currentPosition: show?.currentPosition ?? null,
   })

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
 import { prisma } from "@/lib/prisma"
-import { slugify } from "@/lib/slugify"
+import { resolveShowBySlug } from "@/lib/slug-resolver"
 import ShowPublicClient from "./ShowPublicClient"
 
 interface Props {
@@ -12,9 +12,12 @@ interface Props {
 export default async function PublicShowPage({ params }: Props) {
   const { slug } = await params
 
-  const shows = await prisma.show.findMany({
+  const showId = await resolveShowBySlug(slug)
+  if (!showId) notFound()
+
+  const show = await prisma.show.findUnique({
+    where: { id: showId },
     include: {
-      season: true,
       actPositions: {
         include: { act: { include: { class: { include: { teacher: true } } } } },
         orderBy: { position: "asc" },
@@ -22,7 +25,6 @@ export default async function PublicShowPage({ params }: Props) {
     },
   })
 
-  const show = shows.find((s) => slugify(s.name, s.season.label) === slug)
   if (!show) notFound()
 
   const orderedActs = show.actPositions.map((ap) => ({

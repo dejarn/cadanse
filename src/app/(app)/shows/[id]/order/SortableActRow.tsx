@@ -56,6 +56,7 @@ export default function SortableActRow({
           <IconButton
             size="small"
             onClick={() => onToggleLock(act.id)}
+            aria-label={isLocked ? `Libérer la position de ${act.name}` : `Fixer la position de ${act.name}`}
             sx={{
               color: isLocked ? "primary.main" : "text.disabled",
               "&:hover": { color: isLocked ? "primary.light" : "text.secondary" },

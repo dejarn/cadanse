@@ -131,11 +131,11 @@ export default function TeachersClient({ teachers }: Props) {
               key={teacher.id}
               actions={
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <IconButton size="small" onClick={() => openEdit(teacher)}>
+                  <IconButton size="small" onClick={() => openEdit(teacher)} aria-label={`Modifier ${teacherName(teacher)}`}>
                     <EditIcon fontSize="small" />
                   </IconButton>
 
-                  <IconButton size="small" onClick={() => crud.openDelete(teacher)}>
+                  <IconButton size="small" onClick={() => crud.openDelete(teacher)} aria-label={`Supprimer ${teacherName(teacher)}`}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>

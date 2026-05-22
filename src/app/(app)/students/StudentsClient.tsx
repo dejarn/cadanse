@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
@@ -68,6 +68,14 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
 
   const classesDialog = useEntityDialog(students)
   const classesStudent = classesDialog.displaySelected
+
+  // Re-sync dialog when students prop refreshes (e.g. after add/remove class)
+  useEffect(() => {
+    if (!classesDialog.selected) return
+    const updated = students.find((s) => s.id === classesDialog.selected!.id)
+    if (updated) classesDialog.open(updated)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [students])
 
   const [addClassId, setAddClassId] = useState("")
   const [addLoading, setAddLoading] = useState(false)
@@ -218,15 +226,15 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
                     {student.enrollments.length} cours
                   </Typography>
 
-                  <IconButton size="small" onClick={() => openClasses(student)} title="Gérer les cours">
+                  <IconButton size="small" onClick={() => openClasses(student)} title="Gérer les cours" aria-label={`Gérer les cours de ${student.firstName} ${student.lastName}`}>
                     <SchoolIcon fontSize="small" />
                   </IconButton>
 
-                  <IconButton size="small" onClick={() => openEdit(student)}>
+                  <IconButton size="small" onClick={() => openEdit(student)} aria-label={`Modifier ${student.firstName} ${student.lastName}`}>
                     <EditIcon fontSize="small" />
                   </IconButton>
 
-                  <IconButton size="small" onClick={() => crud.openDelete(student)}>
+                  <IconButton size="small" onClick={() => crud.openDelete(student)} aria-label={`Supprimer ${student.firstName} ${student.lastName}`}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>
@@ -370,6 +378,7 @@ export default function StudentsClient({ students, classes, hasActiveSeason }: P
                     size="small"
                     disabled={removeLoadingId === enrollment.classId}
                     onClick={() => handleRemoveClass(enrollment.classId)}
+                    aria-label={`Retirer du cours ${enrollment.class.name}`}
                   >
                     {removeLoadingId === enrollment.classId ? (
                       <CircularProgress size={16} />

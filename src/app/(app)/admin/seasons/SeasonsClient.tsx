@@ -9,6 +9,7 @@ import IconButton from "@mui/material/IconButton"
 import Chip from "@mui/material/Chip"
 import Divider from "@mui/material/Divider"
 import TextField from "@mui/material/TextField"
+import Alert from "@mui/material/Alert"
 import CircularProgress from "@mui/material/CircularProgress"
 import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
@@ -39,6 +40,7 @@ export default function SeasonsClient({ seasons }: Props) {
   const [createLabel, setCreateLabel] = useState("")
   const [editLabel, setEditLabel] = useState("")
   const [activatingId, setActivatingId] = useState<string | null>(null)
+  const [activateError, setActivateError] = useState<string | null>(null)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -58,8 +60,14 @@ export default function SeasonsClient({ seasons }: Props) {
 
   async function handleActivate(id: string) {
     setActivatingId(id)
-    await fetch(`/api/seasons/${id}/activate`, { method: "POST" })
+    setActivateError(null)
+    const res = await fetch(`/api/seasons/${id}/activate`, { method: "POST" })
     setActivatingId(null)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setActivateError(data.error ?? "Erreur lors de l'activation.")
+      return
+    }
     router.refresh()
   }
 
@@ -91,6 +99,8 @@ export default function SeasonsClient({ seasons }: Props) {
 
       <Divider sx={{ mb: 2 }} />
 
+      {activateError && <Alert severity="error" sx={{ mb: 2 }}>{activateError}</Alert>}
+
       {seasons.length === 0 ? (
         <Box sx={{ px: 2, py: 1.5, borderRadius: 1, minHeight: 56, display: "flex", alignItems: "center" }}>
           <Typography variant="body2" color="text.secondary">
@@ -120,11 +130,11 @@ export default function SeasonsClient({ seasons }: Props) {
                     </Button>
                   ) : null}
 
-                  <IconButton size="small" onClick={() => openEdit(season)}>
+                  <IconButton size="small" onClick={() => openEdit(season)} aria-label={`Modifier ${season.label}`}>
                     <EditIcon fontSize="small" />
                   </IconButton>
 
-                  <IconButton size="small" onClick={() => crud.openDelete(season)}>
+                  <IconButton size="small" onClick={() => crud.openDelete(season)} aria-label={`Supprimer ${season.label}`}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>

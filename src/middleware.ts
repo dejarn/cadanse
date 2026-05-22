@@ -22,9 +22,18 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", req.url))
   }
 
+  // If it's an API route (not auth or public), check session
+  if (pathname.startsWith("/api/") &&
+      !pathname.startsWith("/api/auth") &&
+      !pathname.startsWith("/api/public") &&
+      !pathname.startsWith("/api/invites") &&  // invite token check is public
+      !isAuthed) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   return NextResponse.next()
 })
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|s/).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|s/).*)"],
 }

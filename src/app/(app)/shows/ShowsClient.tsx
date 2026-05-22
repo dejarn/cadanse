@@ -84,6 +84,7 @@ export default function ShowsClient({ shows, seasonId }: Props) {
   const [createForm, setCreateForm] = useState(emptyForm)
   const [editForm, setEditForm] = useState(emptyForm)
   const [duplicateLoadingId, setDuplicateLoadingId] = useState<string | null>(null)
+  const [duplicateError, setDuplicateError] = useState<string | null>(null)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -103,12 +104,18 @@ export default function ShowsClient({ shows, seasonId }: Props) {
 
   async function handleDuplicate(show: Show) {
     setDuplicateLoadingId(show.id)
-    await fetch("/api/shows", {
+    setDuplicateError(null)
+    const res = await fetch("/api/shows", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: show.name + " - Copie", date: show.date, seasonId }),
     })
     setDuplicateLoadingId(null)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setDuplicateError(data.error ?? "Erreur lors de la duplication.")
+      return
+    }
     router.refresh()
   }
 
@@ -169,6 +176,7 @@ export default function ShowsClient({ shows, seasonId }: Props) {
                         size="small"
                         onClick={() => handleDuplicate(show)}
                         disabled={duplicateLoadingId === show.id}
+                        aria-label={`Dupliquer ${show.name}`}
                       >
                         {duplicateLoadingId === show.id ? (
                           <CircularProgress size={16} />
@@ -179,12 +187,12 @@ export default function ShowsClient({ shows, seasonId }: Props) {
                     </span>
                   </Tooltip>
                   <Tooltip title="Modifier">
-                    <IconButton size="small" onClick={() => openEdit(show)}>
+                    <IconButton size="small" onClick={() => openEdit(show)} aria-label={`Modifier ${show.name}`}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Supprimer">
-                    <IconButton size="small" onClick={() => crud.openDelete(show)}>
+                    <IconButton size="small" onClick={() => crud.openDelete(show)} aria-label={`Supprimer ${show.name}`}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>

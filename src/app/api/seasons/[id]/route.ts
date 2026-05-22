@@ -6,7 +6,8 @@ type Params = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await auth()
-  if (session?.user.role !== "SUPER_ADMIN") {
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -23,7 +24,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await auth()
-  if (session?.user.role !== "SUPER_ADMIN") {
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

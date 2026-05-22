@@ -1,22 +1,26 @@
 import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { slugify } from "@/lib/slugify"
+import { resolveShowBySlug } from "@/lib/slug-resolver"
 import { onShow, type ShowPayload } from "@/lib/sse-emitter"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
-  const shows = await prisma.show.findMany({
+  const showId = await resolveShowBySlug(slug)
+  if (!showId) {
+    return new Response("Not found", { status: 404 })
+  }
+
+  const show = await prisma.show.findUnique({
+    where: { id: showId },
     include: {
-      season: true,
       actPositions: {
-        include: { act: { include: { class: { include: { teacher: true } } } } },
+        include: { act: true },
         orderBy: { position: "asc" },
       },
     },
   })
 
-  const show = shows.find((s) => slugify(s.name, s.season.label) === slug)
   if (!show) {
     return new Response("Not found", { status: 404 })
   }
@@ -26,10 +30,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
       id: ap.actId,
       name: ap.act.name,
       position: ap.position,
-      className: ap.act.class?.name ?? null,
-      teacherName: ap.act.class
-        ? ap.act.class.teacher.displayName ?? `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`
-        : null,
     })),
     currentPosition: show.currentPosition,
   }

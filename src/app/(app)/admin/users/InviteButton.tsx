@@ -20,15 +20,19 @@ export default function InviteButton() {
   const [loading, setLoading] = useState(false)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleGenerate() {
     setLoading(true)
+    setError(null)
     const res = await fetch("/api/invites", { method: "POST" })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
     setLoading(false)
     if (res.ok) {
       setInviteUrl(`${window.location.origin}/invite/${data.token}`)
       setOpen(true)
+    } else {
+      setError(data.error ?? "Erreur lors de la génération du lien.")
     }
   }
 
@@ -57,6 +61,11 @@ export default function InviteButton() {
       >
         Inviter un administrateur
       </Button>
+      {error && (
+        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+          {error}
+        </Typography>
+      )}
 
       <Dialog
         open={open}

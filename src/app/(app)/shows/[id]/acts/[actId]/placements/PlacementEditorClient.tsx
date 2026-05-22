@@ -252,7 +252,10 @@ export default function PlacementEditorClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId, color: nextColor }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        setError("Erreur lors du changement de couleur.")
+        return
+      }
       setLocalColors((prev) => new Map(prev).set(studentId, nextColor))
     },
     [show.id, act.id, localColors, participants],
@@ -290,7 +293,11 @@ export default function PlacementEditorClient({
         return { ...s, placements: Array.from(scenePlacements.get(s.id)?.values() ?? []) }
       }),
     )
-    setDirtyScenes(new Set())
+    setDirtyScenes((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => next.delete(id))
+      return next
+    })
     setSaving(false)
     router.refresh()
   }, [dirtyScenes, scenePlacements, show.id, act.id, router])
@@ -352,6 +359,7 @@ export default function PlacementEditorClient({
         <SceneTabs
           scenes={scenes}
           activeSceneId={activeSceneId}
+          dirtySceneIds={dirtyScenes}
           onSceneChange={handleSceneChange}
           onAddScene={handleAddScene}
           onDeleteScene={handleDeleteScene}

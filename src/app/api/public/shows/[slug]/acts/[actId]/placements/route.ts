@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { slugify } from "@/lib/slugify"
+import { resolveShowBySlug } from "@/lib/slug-resolver"
 
 type Params = { params: Promise<{ slug: string; actId: string }> }
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { slug, actId } = await params
 
-  const shows = await prisma.show.findMany({
-    include: { season: true },
-  })
+  const showId = await resolveShowBySlug(slug)
+  if (!showId) return NextResponse.json({ error: "Show not found" }, { status: 404 })
 
-  const show = shows.find((s) => slugify(s.name, s.season.label) === slug)
+  const show = await prisma.show.findUnique({
+    where: { id: showId },
+    select: { id: true, name: true },
+  })
   if (!show) return NextResponse.json({ error: "Show not found" }, { status: 404 })
 
   const act = await prisma.act.findUnique({

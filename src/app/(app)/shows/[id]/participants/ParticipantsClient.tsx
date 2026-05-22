@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export default function ParticipantsClient({ show, students, participatingIds, classes }: Props) {
+  const router = useRouter()
   const [checked, setChecked] = useState<Set<string>>(new Set(participatingIds))
   const [error, setError] = useState<string | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -42,7 +44,7 @@ export default function ParticipantsClient({ show, students, participatingIds, c
   })
 
   async function handleToggle(studentId: string) {
-    if (loadingId) return
+    if (loadingId || batchLoading) return
     const isParticipating = checked.has(studentId)
     const prev = checked
     setError(null)
@@ -74,8 +76,7 @@ export default function ParticipantsClient({ show, students, participatingIds, c
     setError(null)
     setBatchLoading(true)
 
-    const prev = checked
-    const next = new Set(prev)
+    const next = new Set(checked)
     let failed = false
 
     for (const student of toAdd) {
@@ -90,12 +91,16 @@ export default function ParticipantsClient({ show, students, participatingIds, c
 
       if (res.status !== 201) {
         failed = true
-        setError("Erreur lors de l'ajout en masse.")
         break
       }
     }
 
-    if (failed) setChecked(prev)
+    if (failed) {
+      router.refresh()
+      setError("Erreur lors de l'ajout en masse.")
+    } else {
+      router.refresh()
+    }
     setBatchLoading(false)
   }
 

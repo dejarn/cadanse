@@ -15,7 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: { currentPosition },
     include: {
       actPositions: {
-        include: { act: { include: { class: { include: { teacher: true } } } } },
+        include: { act: true },
         orderBy: { position: "asc" },
       },
     },
@@ -26,10 +26,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       id: ap.actId,
       name: ap.act.name,
       position: ap.position,
-      className: ap.act.class?.name ?? null,
-      teacherName: ap.act.class
-        ? ap.act.class.teacher.displayName ?? `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`
-        : null,
     })),
     currentPosition: show.currentPosition,
   })
