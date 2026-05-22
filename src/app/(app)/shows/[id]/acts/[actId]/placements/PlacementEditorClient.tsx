@@ -48,22 +48,25 @@ export default function PlacementEditorClient({
   const [localColors, setLocalColors] = useState<Map<string, number>>(
     () => new Map(participants.map((p) => [p.student.id, p.color])),
   )
-  const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [snackbar, setSnackbar] = useState<string | null>(null)
 
-  // Local placements state (mutated on drag/click, synced to scenes on save)
-  const [localPlacements, setLocalPlacements] = useState<Map<string, Placement>>(() => {
-    const map = new Map<string, Placement>()
-    const scene = initialScenes[0]
-    if (scene) {
-      for (const p of scene.placements) {
-        map.set(p.studentId, p)
-      }
+  // Per-scene placements — Map<sceneId, Map<studentId, Placement>>
+  const [scenePlacements, setScenePlacements] = useState<Map<string, Map<string, Placement>>>(() => {
+    const map = new Map<string, Map<string, Placement>>()
+    for (const scene of initialScenes) {
+      map.set(scene.id, new Map(scene.placements.map((p) => [p.studentId, p])))
     }
     return map
   })
+  const [dirtyScenes, setDirtyScenes] = useState<Set<string>>(() => new Set())
+
+  // Derived: active scene's placements (memoized — stable ref)
+  const localPlacements = useMemo(
+    () => (activeSceneId ? scenePlacements.get(activeSceneId) : undefined) ?? new Map<string, Placement>(),
+    [activeSceneId, scenePlacements],
+  )
 
   const stageRef = useRef<HTMLDivElement>(null)
 
@@ -90,21 +93,31 @@ export default function PlacementEditorClient({
     [localPlacements],
   )
 
-  const handleSceneChange = useCallback(
-    (sceneId: string) => {
-      setActiveSceneId(sceneId)
-      setSelectedStudentId(null)
-      const scene = scenes.find((s) => s.id === sceneId)
-      const map = new Map<string, Placement>()
-      if (scene) {
-        for (const p of scene.placements) {
-          map.set(p.studentId, p)
-        }
-      }
-      setLocalPlacements(map)
+  // --- Helpers ---
+
+  const markSceneDirty = useCallback((sceneId: string) => {
+    setDirtyScenes((prev) => new Set(prev).add(sceneId))
+  }, [])
+
+  const updateScenePlacements = useCallback(
+    (sceneId: string, updater: (prev: Map<string, Placement>) => Map<string, Placement>) => {
+      setScenePlacements((prev) => {
+        const next = new Map(prev)
+        const current = prev.get(sceneId) ?? new Map<string, Placement>()
+        next.set(sceneId, updater(new Map(current)))
+        return next
+      })
+      markSceneDirty(sceneId)
     },
-    [scenes],
+    [markSceneDirty],
   )
+
+  // --- Scene management ---
+
+  const handleSceneChange = useCallback((sceneId: string) => {
+    setActiveSceneId(sceneId)
+    setSelectedStudentId(null)
+  }, [])
 
   const handleAddScene = useCallback(async () => {
     const name = `Scène ${scenes.length + 1}`
@@ -120,9 +133,8 @@ export default function PlacementEditorClient({
     const { data } = await res.json()
     setScenes((prev) => [...prev, data])
     setActiveSceneId(data.id)
-    setLocalPlacements(new Map())
+    setScenePlacements((prev) => new Map(prev).set(data.id, new Map()))
     setSelectedStudentId(null)
-    setDirty(false)
   }, [show.id, act.id, scenes.length])
 
   const handleDeleteScene = useCallback(
@@ -136,22 +148,13 @@ export default function PlacementEditorClient({
       }
       const remaining = scenes.filter((s) => s.id !== sceneId)
       setScenes(remaining)
+      setScenePlacements((prev) => { const n = new Map(prev); n.delete(sceneId); return n })
+      setDirtyScenes((prev) => { const n = new Set(prev); n.delete(sceneId); return n })
       if (activeSceneId === sceneId) {
         const next = remaining[0]
-        if (next) {
-          setActiveSceneId(next.id)
-          const map = new Map<string, Placement>()
-          for (const p of next.placements) {
-            map.set(p.studentId, p)
-          }
-          setLocalPlacements(map)
-        } else {
-          setActiveSceneId(null)
-          setLocalPlacements(new Map())
-        }
+        setActiveSceneId(next?.id ?? null)
         setSelectedStudentId(null)
       }
-      setDirty(false)
     },
     [show.id, act.id, scenes, activeSceneId],
   )
@@ -172,33 +175,52 @@ export default function PlacementEditorClient({
     [show.id, act.id],
   )
 
+  const handleDuplicateScene = useCallback(async (sourceSceneId: string) => {
+    const source = scenes.find((s) => s.id === sourceSceneId)
+    if (!source) return
+    const name = `${source.name} (copie)`
+    const res = await fetch(`/api/shows/${show.id}/acts/${act.id}/scenes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    })
+    if (!res.ok) { setError("Erreur lors de la duplication."); return }
+    const { data } = await res.json()
+    const sourcePlacements = scenePlacements.get(sourceSceneId) ?? new Map<string, Placement>()
+    const copied = new Map(sourcePlacements)
+    setScenes((prev) => [...prev, { ...data, placements: [] }])
+    setScenePlacements((prev) => new Map(prev).set(data.id, copied))
+    setDirtyScenes((prev) => new Set(prev).add(data.id))
+    setActiveSceneId(data.id)
+    setSelectedStudentId(null)
+  }, [show.id, act.id, scenes, scenePlacements])
+
+  // --- Placement handlers ---
+
   const handleStageClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!selectedStudentId || !stageRef.current) return
+      if (!selectedStudentId || !stageRef.current || !activeSceneId) return
       const rect = stageRef.current.getBoundingClientRect()
       const x = Math.round(((e.clientX - rect.left) / rect.width) * 100)
       const y = Math.round(((e.clientY - rect.top) / rect.height) * 100)
       const clamped = { studentId: selectedStudentId, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }
-
-      setLocalPlacements((prev) => {
+      updateScenePlacements(activeSceneId, (prev) => {
         const next = new Map(prev)
         next.set(selectedStudentId, clamped)
         return next
       })
       setSelectedStudentId(null)
-      setDirty(true)
     },
-    [selectedStudentId],
+    [selectedStudentId, activeSceneId, updateScenePlacements],
   )
 
   const handleDotDrag = useCallback(
     (studentId: string, deltaX: number, deltaY: number) => {
-      if (!stageRef.current) return
+      if (!stageRef.current || !activeSceneId) return
       const rect = stageRef.current.getBoundingClientRect()
       const pxToPercentX = (deltaX / rect.width) * 100
       const pxToPercentY = (deltaY / rect.height) * 100
-
-      setLocalPlacements((prev) => {
+      updateScenePlacements(activeSceneId, (prev) => {
         const existing = prev.get(studentId)
         if (!existing) return prev
         const next = new Map(prev)
@@ -209,24 +231,22 @@ export default function PlacementEditorClient({
         })
         return next
       })
-      setDirty(true)
     },
-    [],
+    [activeSceneId, updateScenePlacements],
   )
 
   const handleDotRemove = useCallback((studentId: string) => {
-    setLocalPlacements((prev) => {
+    if (!activeSceneId) return
+    updateScenePlacements(activeSceneId, (prev) => {
       const next = new Map(prev)
       next.delete(studentId)
       return next
     })
-    setDirty(true)
-  }, [])
+  }, [activeSceneId, updateScenePlacements])
 
   const handleColorChange = useCallback(
-    async (studentId: string) => {
-      const currentColor = localColors.get(studentId) ?? participants.find((p) => p.student.id === studentId)?.color ?? 0
-      const nextColor = (currentColor + 1) % DOT_COLORS.length
+    async (studentId: string, colorIndex?: number) => {
+      const nextColor = colorIndex ?? ((localColors.get(studentId) ?? participants.find((p) => p.student.id === studentId)?.color ?? 0) + 1) % DOT_COLORS.length
       const res = await fetch(`/api/shows/${show.id}/acts/${act.id}/participants`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -238,37 +258,57 @@ export default function PlacementEditorClient({
     [show.id, act.id, localColors, participants],
   )
 
+  // --- Global save (all dirty scenes in parallel) ---
+
   const handleSave = useCallback(async () => {
-    if (!activeSceneId) return
+    if (dirtyScenes.size === 0) return
     setSaving(true)
     setError(null)
 
-    const placements = Array.from(localPlacements.values())
-    const res = await fetch(
-      `/api/shows/${show.id}/acts/${act.id}/scenes/${activeSceneId}/placements`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ placements }),
-      },
+    const ids = [...dirtyScenes]
+    const results = await Promise.all(
+      ids.map((sceneId) =>
+        fetch(`/api/shows/${show.id}/acts/${act.id}/scenes/${sceneId}/placements`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ placements: Array.from(scenePlacements.get(sceneId)?.values() ?? []) }),
+        }),
+      ),
     )
 
-    setSaving(false)
-
-    if (!res.ok) {
+    const failed = results.some((res) => !res.ok)
+    if (failed) {
       setError("Erreur lors de la sauvegarde.")
+      setSaving(false)
       return
     }
 
-    // Sync local scenes state
+    // Sync scenes state with saved placements
     setScenes((prev) =>
-      prev.map((s) =>
-        s.id === activeSceneId ? { ...s, placements } : s,
-      ),
+      prev.map((s) => {
+        if (!ids.includes(s.id)) return s
+        return { ...s, placements: Array.from(scenePlacements.get(s.id)?.values() ?? []) }
+      }),
     )
-    setDirty(false)
+    setDirtyScenes(new Set())
+    setSaving(false)
     router.refresh()
-  }, [activeSceneId, localPlacements, show.id, act.id, router])
+  }, [dirtyScenes, scenePlacements, show.id, act.id, router])
+
+  const handleReorderScenes = useCallback(async (ids: string[]) => {
+    const prev = scenes
+    const reordered = ids.map((id) => scenes.find((s) => s.id === id)!).filter(Boolean)
+    setScenes(reordered)
+    const res = await fetch(`/api/shows/${show.id}/acts/${act.id}/scenes/order`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    })
+    if (!res.ok) {
+      setScenes(prev)
+      setError("Erreur lors du réordonnement.")
+    }
+  }, [scenes, show.id, act.id])
 
   const handleCopyLink = useCallback(() => {
     const url = `${window.location.origin}/s/${slug}/placements/${act.id}`
@@ -306,21 +346,21 @@ export default function PlacementEditorClient({
           onAddScene={handleAddScene}
           onDeleteScene={handleDeleteScene}
           onRenameScene={handleRenameScene}
+          onDuplicateScene={handleDuplicateScene}
+          onReorderScenes={handleReorderScenes}
         />
       </Box>
 
-      {/* Selection info bar */}
-      {selectedStudentId && activeScene && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, px: 1, py: 0.5, borderRadius: 1, bgcolor: "rgba(212,168,83,0.08)", border: "1px solid rgba(212,168,83,0.2)" }}>
-          <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: dotColor(localColors.get(selectedStudentId) ?? 0) }} />
-          <Typography variant="body2">
-            {participantMap.get(selectedStudentId)?.student.firstName} sélectionné — cliquez sur la scène pour placer
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
-            Échap pour annuler
-          </Typography>
-        </Box>
-      )}
+      {/* Selection info bar — reserved space */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, px: 1, py: 0.5, borderRadius: 1, bgcolor: "rgba(212,168,83,0.08)", border: "1px solid rgba(212,168,83,0.2)", visibility: selectedStudentId && activeScene ? "visible" : "hidden" }}>
+        <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: dotColor(localColors.get(selectedStudentId ?? "") ?? 0) }} />
+        <Typography variant="body2">
+          {selectedStudentId ? `${participantMap.get(selectedStudentId)?.student.firstName} sélectionné — cliquez sur la scène pour placer` : " "}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
+          Échap pour annuler
+        </Typography>
+      </Box>
 
       {/* Main area */}
       {activeScene ? (
@@ -331,7 +371,6 @@ export default function PlacementEditorClient({
             placedStudentIds={placedStudentIds}
             selectedStudentId={selectedStudentId}
             onSelectStudent={setSelectedStudentId}
-            onColorChange={handleColorChange}
           />
 
           {/* Stage */}
@@ -343,6 +382,8 @@ export default function PlacementEditorClient({
             onClick={handleStageClick}
             onDotDrag={handleDotDrag}
             onDotRemove={handleDotRemove}
+            onSelectStudent={setSelectedStudentId}
+            onColorChange={handleColorChange}
           />
         </Box>
       ) : (
@@ -362,11 +403,11 @@ export default function PlacementEditorClient({
             size="small"
             startIcon={saving ? undefined : <SaveIcon />}
             onClick={handleSave}
-            disabled={!dirty || saving || !activeSceneId}
+            disabled={dirtyScenes.size === 0 || saving}
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
-          {dirty && (
+          {dirtyScenes.size > 0 && (
             <Typography variant="caption" color="text.secondary">
               Modifications non enregistrées
             </Typography>

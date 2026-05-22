@@ -33,11 +33,14 @@ export default function StageBox({ children, maxWidth = 800, sx }: Props) {
   return (
     <Box sx={{ ...stageSx, maxWidth, ...sx }}>
       {children}
-      <Typography variant="caption" sx={{ ...labelSx, bottom: 4 }}>
+      <Typography variant="caption" sx={{ ...labelSx, top: 4 }}>
         Public
       </Typography>
-      <Typography variant="caption" sx={{ ...labelSx, top: 4 }}>
+      <Typography variant="caption" sx={{ position: "absolute", top: "50%", left: 4, transform: "translateY(-50%)", color: "text.secondary", opacity: 0.4, pointerEvents: "none" }}>
         Côté cour
+      </Typography>
+      <Typography variant="caption" sx={{ position: "absolute", top: "50%", right: 4, transform: "translateY(-50%)", color: "text.secondary", opacity: 0.4, pointerEvents: "none" }}>
+        Côté jardin
       </Typography>
     </Box>
   )

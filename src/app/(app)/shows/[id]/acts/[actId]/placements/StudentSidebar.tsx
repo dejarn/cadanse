@@ -15,7 +15,6 @@ interface Props {
   placedStudentIds: Set<string>
   selectedStudentId: string | null
   onSelectStudent: (id: string | null) => void
-  onColorChange: (studentId: string) => void
 }
 
 function StudentRow({
@@ -23,13 +22,11 @@ function StudentRow({
   isPlaced,
   isSelected,
   onSelect,
-  onColorChange,
 }: {
   participant: Participant
   isPlaced: boolean
   isSelected: boolean
   onSelect: () => void
-  onColorChange: () => void
 }) {
   const color = dotColor(participant.color)
 
@@ -50,10 +47,6 @@ function StudentRow({
       }}
     >
       <Box
-        onClick={(e) => {
-          e.stopPropagation()
-          onColorChange()
-        }}
         sx={{
           width: 14,
           height: 14,
@@ -61,9 +54,6 @@ function StudentRow({
           bgcolor: isPlaced ? color : "transparent",
           border: `2px solid ${color}`,
           flexShrink: 0,
-          cursor: "pointer",
-          transition: "all 150ms",
-          "&:hover": { transform: "scale(1.2)" },
         }}
       />
       <Typography
@@ -86,7 +76,6 @@ export default function StudentSidebar({
   placedStudentIds,
   selectedStudentId,
   onSelectStudent,
-  onColorChange,
 }: Props) {
   const [search, setSearch] = useState("")
 
@@ -145,7 +134,6 @@ export default function StudentSidebar({
                     isPlaced
                     isSelected={selectedStudentId === p.student.id}
                     onSelect={() => onSelectStudent(selectedStudentId === p.student.id ? null : p.student.id)}
-                    onColorChange={() => onColorChange(p.student.id)}
                   />
                 ))}
                 <Divider sx={{ my: 1 }} />
@@ -163,7 +151,6 @@ export default function StudentSidebar({
                     isPlaced={false}
                     isSelected={selectedStudentId === p.student.id}
                     onSelect={() => onSelectStudent(selectedStudentId === p.student.id ? null : p.student.id)}
-                    onColorChange={() => onColorChange(p.student.id)}
                   />
                 ))}
               </>
