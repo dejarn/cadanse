@@ -116,7 +116,6 @@ export default function PlacementEditorClient({
 
   const handleSceneChange = useCallback((sceneId: string) => {
     setActiveSceneId(sceneId)
-    setSelectedStudentId(null)
   }, [])
 
   const handleAddScene = useCallback(async () => {
@@ -355,7 +354,7 @@ export default function PlacementEditorClient({
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, px: 1, py: 0.5, borderRadius: 1, bgcolor: "rgba(212,168,83,0.08)", border: "1px solid rgba(212,168,83,0.2)", visibility: selectedStudentId && activeScene ? "visible" : "hidden" }}>
         <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: dotColor(localColors.get(selectedStudentId ?? "") ?? 0) }} />
         <Typography variant="body2">
-          {selectedStudentId ? `${participantMap.get(selectedStudentId)?.student.firstName} sélectionné — cliquez sur la scène pour placer` : " "}
+          {selectedStudentId ? `${participantMap.get(selectedStudentId)?.student.firstName} ${participantMap.get(selectedStudentId)?.student.lastName} sélectionné — cliquez sur la scène pour placer` : " "}
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
           Échap pour annuler

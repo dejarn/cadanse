@@ -37,31 +37,33 @@ export default function PlacementsPublicClient({ scenes }: Props) {
   return (
     <Box>
       {/* Scene navigation */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <IconButton
-            size="small"
-            onClick={() => setSceneIndex((i) => Math.max(0, i - 1))}
-            disabled={sceneIndex === 0}
-          >
-            <NavigateBeforeIcon />
-          </IconButton>
+      <Box sx={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", mb: 2 }}>
+        <IconButton
+          size="small"
+          onClick={() => setSceneIndex((i) => Math.max(0, i - 1))}
+          disabled={sceneIndex === 0}
+        >
+          <NavigateBeforeIcon />
+        </IconButton>
+
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <Typography
-            sx={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem", color: "primary.main" }}
+            sx={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem", color: "primary.main", textAlign: "center" }}
           >
             {scene.name}
           </Typography>
-          <IconButton
-            size="small"
-            onClick={() => setSceneIndex((i) => Math.min(scenes.length - 1, i + 1))}
-            disabled={sceneIndex === scenes.length - 1}
-          >
-            <NavigateNextIcon />
-          </IconButton>
+          <Typography variant="caption" color="text.secondary">
+            {sceneIndex + 1} / {scenes.length}
+          </Typography>
         </Box>
-        <Typography variant="caption" color="text.secondary">
-          {sceneIndex + 1} / {scenes.length}
-        </Typography>
+
+        <IconButton
+          size="small"
+          onClick={() => setSceneIndex((i) => Math.min(scenes.length - 1, i + 1))}
+          disabled={sceneIndex === scenes.length - 1}
+        >
+          <NavigateNextIcon />
+        </IconButton>
       </Box>
 
       {/* Stage */}

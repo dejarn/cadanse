@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useMemo, useState } from "react"
+import useMediaQuery from "@mui/material/useMediaQuery"
+import { useTheme } from "@mui/material/styles"
 import Link from "next/link"
 import {
   DndContext,
@@ -118,6 +120,9 @@ function parseDuration(form: ActFormState) {
 }
 
 export default function OrderClient({ show, classes }: Props) {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"))
+
   const crud = useCrudDialogs<ActWithClass>({
     items: show.acts,
     createUrl: `/api/shows/${show.id}/acts`,
@@ -469,11 +474,13 @@ export default function OrderClient({ show, classes }: Props) {
                       <GroupIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Placements">
-                    <IconButton size="small" component={Link} href={`/shows/${show.id}/acts/${act.id}/placements`}>
-                      <PlaceIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  {!isMobile && (
+                    <Tooltip title="Placements">
+                      <IconButton size="small" component={Link} href={`/shows/${show.id}/acts/${act.id}/placements`}>
+                        <PlaceIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Tooltip title="Modifier">
                     <IconButton size="small" onClick={() => openEdit(act)}>
                       <EditIcon fontSize="small" />
