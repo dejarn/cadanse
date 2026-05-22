@@ -237,7 +237,6 @@ export default function SceneTabs({
           autoFocus
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitRename()}
           fullWidth
           size="small"
           sx={{ pt: 1 }}

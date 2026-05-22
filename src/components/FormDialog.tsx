@@ -41,7 +41,7 @@ export default function FormDialog({
       <DialogTitle sx={{ fontFamily: "'Cormorant Garamond', serif", color: "primary.main", fontSize: "1.5rem" }}>
         {title}
       </DialogTitle>
-      <Box component="form" onSubmit={onSubmit}>
+      <Box component="form" onSubmit={(e) => { e.preventDefault(); onSubmit(e) }}>
         <DialogContent sx={{ pt: 1 }}>
           {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
           {children}

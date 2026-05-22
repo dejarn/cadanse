@@ -9,7 +9,8 @@ import Button from "@mui/material/Button"
 import Alert from "@mui/material/Alert"
 import Snackbar from "@mui/material/Snackbar"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
-import LinkIcon from "@mui/icons-material/Link"
+import CheckIcon from "@mui/icons-material/Check"
+import ContentCopyIcon from "@mui/icons-material/ContentCopy"
 import SaveIcon from "@mui/icons-material/Save"
 import AddIcon from "@mui/icons-material/Add"
 import SceneTabs from "./SceneTabs"
@@ -50,7 +51,7 @@ export default function PlacementEditorClient({
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // Per-scene placements — Map<sceneId, Map<studentId, Placement>>
   const [scenePlacements, setScenePlacements] = useState<Map<string, Map<string, Placement>>>(() => {
@@ -311,10 +312,10 @@ export default function PlacementEditorClient({
 
   const handleCopyLink = useCallback(() => {
     const url = `${window.location.origin}/s/${slug}/placements/${act.id}`
-    navigator.clipboard.writeText(url).then(
-      () => setSnackbar("Lien copié."),
-      () => setSnackbar("Impossible de copier le lien."),
-    )
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }, [slug, act.id])
 
   return (
@@ -333,6 +334,16 @@ export default function PlacementEditorClient({
           <Button component={Link} href={`/shows/${show.id}/order`} variant="outlined" size="small" startIcon={<ArrowBackIcon />}>
             Retour
           </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}
+            onClick={handleCopyLink}
+            disabled={!activeSceneId}
+            sx={copied ? { borderColor: "success.main", color: "success.main" } : {}}
+          >
+            {copied ? "Copié" : "Lien"}
+          </Button>
         </Box>
       </Box>
 
@@ -350,15 +361,35 @@ export default function PlacementEditorClient({
         />
       </Box>
 
-      {/* Selection info bar — reserved space */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, px: 1, py: 0.5, borderRadius: 1, bgcolor: "rgba(212,168,83,0.08)", border: "1px solid rgba(212,168,83,0.2)", visibility: selectedStudentId && activeScene ? "visible" : "hidden" }}>
-        <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: dotColor(localColors.get(selectedStudentId ?? "") ?? 0) }} />
-        <Typography variant="body2">
-          {selectedStudentId ? `${participantMap.get(selectedStudentId)?.student.firstName} ${participantMap.get(selectedStudentId)?.student.lastName} sélectionné — cliquez sur la scène pour placer` : " "}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
-          Échap pour annuler
-        </Typography>
+      {/* Selection info bar — always visible, save button justifies reserved space */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, px: 1, py: 0.5, borderRadius: 1, bgcolor: "rgba(212,168,83,0.08)", border: "1px solid rgba(212,168,83,0.2)" }}>
+        {/* Student selection info — hidden when no selection */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, visibility: selectedStudentId && activeScene ? "visible" : "hidden", flex: 1, minWidth: 0 }}>
+          <Box sx={{ width: 10, height: 10, borderRadius: "50%", flexShrink: 0, bgcolor: dotColor(localColors.get(selectedStudentId ?? "") ?? 0) }} />
+          <Typography variant="body2" noWrap>
+            {selectedStudentId ? `${participantMap.get(selectedStudentId)?.student.firstName} ${participantMap.get(selectedStudentId)?.student.lastName} sélectionné — cliquez sur la scène pour placer` : " "}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+            Échap pour annuler
+          </Typography>
+        </Box>
+        {/* Save button — always occupies space */}
+        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+          {dirtyScenes.size > 0 && !saving && (
+            <Typography variant="caption" color="text.secondary">
+              Non enregistré
+            </Typography>
+          )}
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={saving ? undefined : <SaveIcon />}
+            onClick={handleSave}
+            disabled={dirtyScenes.size === 0 || saving}
+          >
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </Box>
       </Box>
 
       {/* Main area */}
@@ -394,44 +425,7 @@ export default function PlacementEditorClient({
         </Box>
       )}
 
-      {/* Footer */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 2, gap: 1 }}>
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={saving ? undefined : <SaveIcon />}
-            onClick={handleSave}
-            disabled={dirtyScenes.size === 0 || saving}
-          >
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </Button>
-          {dirtyScenes.size > 0 && (
-            <Typography variant="caption" color="text.secondary">
-              Modifications non enregistrées
-            </Typography>
-          )}
-        </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<LinkIcon />}
-          onClick={handleCopyLink}
-          disabled={!activeSceneId}
-        >
-          Copier le lien
-        </Button>
-      </Box>
-
       {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-
-      <Snackbar
-        open={Boolean(snackbar)}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar(null)}
-        message={snackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      />
     </>
   )
 }
