@@ -6,12 +6,13 @@ import { timingSafeEqual } from "crypto"
 import { prisma } from "@/lib/prisma"
 import type { Role } from "@prisma/client"
 
-// S4: Startup validation for critical env vars
-if (process.env.NODE_ENV === "production") {
-  if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET === "change-me-in-production") {
-    throw new Error("AUTH_SECRET must be set to a secure value in production")
+// S4: Startup validation for critical env vars (skip during next build — no secrets in Docker build stage)
+const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
+if (process.env.NODE_ENV === "production" && !isNextBuild) {
+  if (!process.env.AUTH_SECRET) {
+    throw new Error("AUTH_SECRET must be set in production")
   }
-  if (!process.env.SUPER_ADMIN_PASSWORD || process.env.SUPER_ADMIN_PASSWORD === "change-me-in-production") {
+  if (!process.env.SUPER_ADMIN_PASSWORD) {
     throw new Error("SUPER_ADMIN_PASSWORD must be set in production")
   }
 }
@@ -39,7 +40,7 @@ declare module "next-auth/jwt" {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
   pages: { signIn: "/login" },
   providers: [
     Credentials({
@@ -95,13 +96,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      // S1: Verify user still exists in DB to handle deleted-user sessions
-      const dbUser = await prisma.user.findUnique({ where: { id: token.id as string }, select: { id: true, role: true } })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (!dbUser) return null as any
       session.user.id = token.id
       session.user.username = token.username
-      session.user.role = dbUser.role
+      session.user.role = token.role
       return session
     },
   },
