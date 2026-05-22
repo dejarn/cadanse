@@ -24,6 +24,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
     placements: { studentId: string; x: number; y: number }[]
   }
 
+  const participantIds = new Set(
+    (await prisma.actParticipation.findMany({ where: { actId }, select: { studentId: true } }))
+      .map((p) => p.studentId)
+  )
+  if (placements.some((p) => !participantIds.has(p.studentId))) {
+    return NextResponse.json({ error: "Invalid student in placement" }, { status: 400 })
+  }
+
   await prisma.$transaction([
     prisma.placement.deleteMany({ where: { sceneId } }),
     prisma.placement.createMany({

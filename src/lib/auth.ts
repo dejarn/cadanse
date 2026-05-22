@@ -2,8 +2,19 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import "next-auth/jwt"
 import bcrypt from "bcryptjs"
+import { timingSafeEqual } from "crypto"
 import { prisma } from "@/lib/prisma"
 import type { Role } from "@prisma/client"
+
+// S4: Startup validation for critical env vars
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET === "change-me-in-production") {
+    throw new Error("AUTH_SECRET must be set to a secure value in production")
+  }
+  if (!process.env.SUPER_ADMIN_PASSWORD || process.env.SUPER_ADMIN_PASSWORD === "change-me-in-production") {
+    throw new Error("SUPER_ADMIN_PASSWORD must be set in production")
+  }
+}
 
 declare module "next-auth" {
   interface Session {
@@ -42,11 +53,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const username = credentials.username as string
         const password = credentials.password as string
 
-        // SUPER_ADMIN: credentials from env vars
-        if (
-          username === process.env.SUPER_ADMIN_USERNAME &&
-          password === process.env.SUPER_ADMIN_PASSWORD
-        ) {
+        // SUPER_ADMIN: credentials from env vars (S2: timing-safe comparison)
+        const usernameMatch = timingSafeEqual(
+          Buffer.from(username),
+          Buffer.from(process.env.SUPER_ADMIN_USERNAME ?? "")
+        )
+        const passwordMatch = timingSafeEqual(
+          Buffer.from(password),
+          Buffer.from(process.env.SUPER_ADMIN_PASSWORD ?? "")
+        )
+        if (usernameMatch && passwordMatch) {
           const superAdmin = await prisma.user.upsert({
             where: { username },
             update: {},
@@ -79,9 +95,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
+      // S1: Verify user still exists in DB to handle deleted-user sessions
+      const dbUser = await prisma.user.findUnique({ where: { id: token.id as string }, select: { id: true, role: true } })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (!dbUser) return null as any
       session.user.id = token.id
       session.user.username = token.username
-      session.user.role = token.role
+      session.user.role = dbUser.role
       return session
     },
   },

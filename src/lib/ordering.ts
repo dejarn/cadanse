@@ -2,7 +2,17 @@ import type { Act } from "@prisma/client"
 
 export interface ActConfig {
   actId: string
-  fixedPosition?: number
+  fixedPosition?: number | null
+}
+
+// Seeded PRNG — mulberry32
+function mulberry32(seed: number) {
+  return function () {
+    let t = (seed += 0x6d2b79f5)
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
 export interface OrderedAct {
@@ -54,6 +64,7 @@ export function generateOrder(
   acts: Act[],
   configs: ActConfig[],
   participants: ParticipantMap = {},
+  seed = Date.now(),
 ): OrderedAct[] {
   const configMap = new Map(configs.map((c) => [c.actId, c]))
 
@@ -61,8 +72,12 @@ export function generateOrder(
   const flexible: Act[] = []
 
   for (const act of acts) {
+    // Use config's value if a config entry exists (null explicitly unpins),
+    // else fall back to the DB value on the act itself.
     const config = configMap.get(act.id)
-    const fp = config?.fixedPosition ?? act.fixedPosition
+    const fp = config !== undefined
+      ? config.fixedPosition ?? null  // explicit null in config = unpin
+      : act.fixedPosition             // no config entry = use DB value
     if (fp != null) {
       fixed.push({ act, position: fp })
     } else {
@@ -127,6 +142,7 @@ export function generateOrder(
 
   // --- Local search phase: swap pairs to improve score ---
 
+  const rng = mulberry32(seed)
   const flexibleIds = new Set(flexible.map((a) => a.id))
   const maxIter = flexible.length * 100
   const noImproveLimit = flexible.length * 20
@@ -139,9 +155,9 @@ export function generateOrder(
 
     if (flexSlots.length < 2) break
 
-    const i = flexSlots[Math.floor(Math.random() * flexSlots.length)]
-    const j = flexSlots[Math.floor(Math.random() * flexSlots.length)]
-    if (i === j) { noImprove++; continue }
+    const i = flexSlots[Math.floor(rng() * flexSlots.length)]
+    const j = flexSlots[Math.floor(rng() * flexSlots.length)]
+    if (i === j) { continue }  // don't penalise noImprove for trivial skip
 
     const actI = slots[i]!
     const actJ = slots[j]!

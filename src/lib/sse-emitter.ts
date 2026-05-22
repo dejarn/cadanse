@@ -2,10 +2,12 @@ import { EventEmitter } from "events"
 
 const g = globalThis as unknown as { showEmitter: EventEmitter }
 
-export const showEmitter = g.showEmitter ?? new EventEmitter()
-showEmitter.setMaxListeners(200)
+if (!g.showEmitter) {
+  g.showEmitter = new EventEmitter()
+  g.showEmitter.setMaxListeners(500) // generous limit for concurrent viewers
+}
 
-if (process.env.NODE_ENV !== "production") g.showEmitter = showEmitter
+export const showEmitter = g.showEmitter
 
 export type ShowPayload = {
   acts: { id: string; name: string; position: number; className: string | null; teacherName: string | null }[]

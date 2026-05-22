@@ -16,7 +16,10 @@ export async function POST(req: NextRequest) {
 
   const { firstName, lastName } = await req.json()
 
-  const shows = await prisma.show.findMany({ select: { id: true } })
+  const activeSeason = await prisma.season.findFirst({ where: { isActive: true } })
+  const shows = activeSeason
+    ? await prisma.show.findMany({ where: { seasonId: activeSeason.id }, select: { id: true } })
+    : []
 
   const student = await prisma.$transaction(async (tx) => {
     const newStudent = await tx.student.create({ data: { firstName, lastName } })

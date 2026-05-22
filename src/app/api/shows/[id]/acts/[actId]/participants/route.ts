@@ -33,8 +33,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Act not found" }, { status: 404 })
   }
 
-  await prisma.actParticipation.delete({
-    where: { actId_studentId: { actId, studentId } },
+  await prisma.$transaction(async (tx) => {
+    const scenes = await tx.scene.findMany({ where: { actId }, select: { id: true } })
+    await tx.placement.deleteMany({
+      where: { sceneId: { in: scenes.map((s) => s.id) }, studentId },
+    })
+    await tx.actParticipation.delete({
+      where: { actId_studentId: { actId, studentId } },
+    })
   })
   return new NextResponse(null, { status: 204 })
 }

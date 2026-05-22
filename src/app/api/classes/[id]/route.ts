@@ -10,7 +10,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { id } = await params
   const body = await req.json()
-  const cls = await prisma.class.update({ where: { id }, data: body })
+  const { name, schedule, teacherId } = body
+  const data: Record<string, unknown> = {}
+  if (name !== undefined) data.name = name
+  if (schedule !== undefined) data.schedule = schedule
+  if (teacherId !== undefined) data.teacherId = teacherId
+  const cls = await prisma.class.update({ where: { id }, data })
   return NextResponse.json({ data: cls })
 }
 

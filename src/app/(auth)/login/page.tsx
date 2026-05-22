@@ -16,7 +16,8 @@ import Divider from "@mui/material/Divider"
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard"
+  const raw = searchParams.get("callbackUrl") ?? "/dashboard"
+  const callbackUrl = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard"
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")

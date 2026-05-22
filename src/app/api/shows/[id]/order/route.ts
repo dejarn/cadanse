@@ -28,21 +28,21 @@ export async function PUT(req: NextRequest, { params }: Params) {
     positions: { actId: string; position: number }[]
   }
 
-  await prisma.$transaction([
-    prisma.actPosition.deleteMany({ where: { showId } }),
-    prisma.actPosition.createMany({
+  const { rows, show } = await prisma.$transaction(async (tx) => {
+    await tx.actPosition.deleteMany({ where: { showId } })
+    await tx.actPosition.createMany({
       data: positions.map((p) => ({ showId, actId: p.actId, position: p.position })),
-    }),
-  ])
-
-  const [rows, show] = await Promise.all([
-    prisma.actPosition.findMany({
+    })
+    const rows = await tx.actPosition.findMany({
       where: { showId },
       include: { act: { include: { class: { include: { teacher: true } } } } },
       orderBy: { position: "asc" },
-    }),
-    prisma.show.findUnique({ where: { id: showId } }),
-  ])
+    })
+    const show = await tx.show.findUnique({ where: { id: showId } })
+    return { rows, show }
+  })
+
+  if (!show) return NextResponse.json({ error: "Show not found" }, { status: 404 })
 
   broadcastShow(showId, {
     acts: rows.map((p) => ({

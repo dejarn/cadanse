@@ -21,12 +21,16 @@ export async function POST(req: NextRequest) {
 
   const { name, date, seasonId } = await req.json()
 
-  const students = await prisma.student.findMany({ select: { id: true } })
+  const seasonStudents = await prisma.studentClass.findMany({
+    where: { class: { seasonId } },
+    select: { studentId: true },
+    distinct: ["studentId"],
+  })
 
   const show = await prisma.$transaction(async (tx) => {
     const newShow = await tx.show.create({ data: { name, date: new Date(date), seasonId } })
     await tx.showParticipation.createMany({
-      data: students.map((s) => ({ showId: newShow.id, studentId: s.id })),
+      data: seasonStudents.map((s) => ({ showId: newShow.id, studentId: s.studentId })),
     })
     return newShow
   })

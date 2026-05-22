@@ -92,6 +92,8 @@ model Class {
   enrollments StudentClass[]
   acts        Act[]
 
+  @@index([seasonId])
+  @@index([teacherId])
   @@map("classes")
 }
 
@@ -103,6 +105,8 @@ model StudentClass {
   class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@id([studentId, classId])
+  @@index([classId])
+  @@index([studentId])
   @@map("student_classes")
 }
 
@@ -119,6 +123,8 @@ model Show {
   actPositions       ActPosition[]
   showParticipations ShowParticipation[]
 
+  @@unique([name, seasonId])
+  @@index([seasonId])
   @@map("shows")
 }
 
@@ -137,6 +143,8 @@ model Act {
   participations ActParticipation[]
   scenes        Scene[]
 
+  @@index([showId])
+  @@index([classId])
   @@map("acts")
 }
 
@@ -148,6 +156,8 @@ model ShowParticipation {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@id([showId, studentId])
+  @@index([showId])
+  @@index([studentId])
   @@map("show_participations")
 }
 
@@ -172,6 +182,7 @@ model ActParticipation {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@id([actId, studentId])
+  @@index([studentId])
   @@map("act_participations")
 }
 
@@ -185,6 +196,7 @@ model Scene {
   act        Act         @relation(fields: [actId], references: [id], onDelete: Cascade)
   placements Placement[]
 
+  @@index([actId])
   @@map("scenes")
 }
 
@@ -199,5 +211,7 @@ model Placement {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sceneId, studentId])
+  @@index([sceneId])
+  @@index([studentId])
   @@map("placements")
 }

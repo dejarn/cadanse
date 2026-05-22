@@ -11,25 +11,38 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { actId } = await params
   const body = await req.json()
 
-  const act = await prisma.act.update({ where: { id: actId }, data: body })
+  // Whitelist user-editable fields to prevent mass assignment
+  const { name, fixedPosition, classId, duration } = body
+  const data: Record<string, unknown> = {}
+  if (name !== undefined) data.name = name
+  if (fixedPosition !== undefined) data.fixedPosition = fixedPosition
+  if (classId !== undefined) data.classId = classId
+  if (duration !== undefined) data.duration = duration
 
-  // Rebuild ActParticipation when classId changes
-  if ("classId" in body) {
-    await prisma.actParticipation.deleteMany({ where: { actId } })
+  // Wrap act update and participation rebuild in a single transaction
+  const act = await prisma.$transaction(async (tx) => {
+    const updated = await tx.act.update({ where: { id: actId }, data })
 
-    if (body.classId) {
-      const enrollments = await prisma.studentClass.findMany({
-        where: { classId: body.classId },
-        select: { studentId: true },
-      })
-      if (enrollments.length > 0) {
-        await prisma.actParticipation.createMany({
-          data: enrollments.map((e) => ({ actId, studentId: e.studentId })),
-          skipDuplicates: true,
+    // Rebuild ActParticipation when classId changes
+    if ("classId" in body) {
+      await tx.actParticipation.deleteMany({ where: { actId } })
+
+      if (body.classId) {
+        const enrollments = await tx.studentClass.findMany({
+          where: { classId: body.classId },
+          select: { studentId: true },
         })
+        if (enrollments.length > 0) {
+          await tx.actParticipation.createMany({
+            data: enrollments.map((e) => ({ actId, studentId: e.studentId })),
+            skipDuplicates: true,
+          })
+        }
       }
     }
-  }
+
+    return updated
+  })
 
   return NextResponse.json({ data: act })
 }
