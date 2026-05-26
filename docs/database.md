@@ -1,10 +1,10 @@
 # Database
 
-_Last updated: 2026-05-07_
+_Last updated: 2026-05-26_
 
 ## Engine & access
 
-- **Database**: PostgreSQL 16
+- **Database**: PostgreSQL 18
 - **ORM**: Prisma (migrations, type-safe queries, Prisma Studio for inspection)
 - **ID strategy**: UUID v4 on all entities (`@default(uuid())`)
 
@@ -68,6 +68,7 @@ Single-school instance. No row-level tenant isolation needed. All admins share f
 | `id` | `String` (UUID) | PK |
 | `firstName` | `String` | |
 | `lastName` | `String` | |
+| `displayName` | `String?` | Optional display name override |
 | `createdAt` | `DateTime` | Auto |
 
 - Pure data entity. Independent from `User`. A teacher does not have an app account.
@@ -117,13 +118,13 @@ Single-school instance. No row-level tenant isolation needed. All admins share f
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `String` (UUID) | PK |
-| `name` | `String` | |
-| `date` | `DateTime` | |
+| `name` | `String` | Unique within season |
+| `date` | `DateTime` (`@db.Date`) | |
 | `seasonId` | `String` (UUID) | FK → `Season` |
 | `currentPosition` | `Int?` | 0-indexed position of the act currently on stage. `null` = no act in progress (show not started or finished — not distinguished). |
 | `createdAt` | `DateTime` | Auto |
 
-- Multiple shows per season allowed.
+- Multiple shows per season allowed. `name` + `seasonId` unique constraint.
 - Public link uses a slug computed at runtime from `name + season.label` (e.g. `gala-de-printemps-2025-2026`). Not stored — derived on each lookup.
 - `currentPosition` is updated live by an admin during the show. Changes are broadcast via SSE to all connected public viewers.
 
@@ -135,26 +136,42 @@ Single-school instance. No row-level tenant isolation needed. All admins share f
 |---|---|---|
 | `id` | `String` (UUID) | PK |
 | `name` | `String` | |
-| `classId` | `String` (UUID) | FK → `Class` |
+| `classId` | `String?` (UUID) | FK → `Class`, optional |
 | `showId` | `String` (UUID) | FK → `Show` |
-| `fixedPosition` | `Int?` | Optional. Pins act to a specific 0-indexed position in the order (0 = first). |
+| `fixedPosition` | `Int?` | Optional. Pins act to a specific 0-indexed position in the order. |
+| `duration` | `Int?` | Optional duration in seconds |
 | `createdAt` | `DateTime` | Auto |
 
+- `classId` is optional — acts can exist without a class link (e.g. opening/finale).
 - One class can have multiple acts in the same show.
 - Unpinned acts are ordered by drag-and-drop.
+- Contains ordered `Scene` entries for stage positioning.
 
 ---
 
-### `Participation`
+### `ShowParticipation`
 
 | Column | Type | Notes |
 |---|---|---|
+| `showId` | `String` (UUID) | FK → `Show` |
 | `studentId` | `String` (UUID) | FK → `Student` |
-| `actId` | `String` (UUID) | FK → `Act` |
 
-- Composite PK: `(studentId, actId)`.
+- Composite PK: `(showId, studentId)`.
+- Links a student to a show. Existence = included.
+
+---
+
+### `ActParticipation`
+
+| Column | Type | Notes |
+|---|---|---|
+| `actId` | `String` (UUID) | FK → `Act` |
+| `studentId` | `String` (UUID) | FK → `Student` |
+| `color` | `Int` | Color code for the student in this act (default 0) |
+
+- Composite PK: `(actId, studentId)`.
 - **Existence = included**. No row = student excluded from this act.
-- Default behavior: when an act is created, participation rows are auto-created for all students enrolled in the act's class.
+- Default behavior: when an act is created with a `classId`, participation rows are auto-created for all students enrolled in the act's class.
 - Removing a row = opting the student out of that specific act.
 
 ---
@@ -171,3 +188,33 @@ Single-school instance. No row-level tenant isolation needed. All admins share f
 - Populated after the ordering algorithm runs and an admin validates the order.
 - Updated in place when admin adjusts the order manually.
 - SSE stream reads from this table to push live updates.
+
+---
+
+### `Scene`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `String` (UUID) | PK |
+| `name` | `String` | Scene name |
+| `order` | `Int` | Order within the act |
+| `actId` | `String` (UUID) | FK → `Act` |
+| `createdAt` | `DateTime` | Auto |
+
+- Ordered scenes within an act (e.g. "Entrée", "Solo", "Finale").
+- Each scene has `Placement` entries for student positions.
+
+---
+
+### `Placement`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `String` (UUID) | PK |
+| `x` | `Float` | Horizontal position (0–1 normalized) |
+| `y` | `Float` | Vertical position (0–1 normalized) |
+| `sceneId` | `String` (UUID) | FK → `Scene` |
+| `studentId` | `String` (UUID) | FK → `Student` |
+
+- Unique constraint: `(sceneId, studentId)` — one placement per student per scene.
+- Coordinates represent position on stage, used by the stage visualization component.

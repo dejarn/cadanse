@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-05-07_
+_Last updated: 2026-05-26_
 
 ## Overview
 
@@ -38,7 +38,7 @@ Browser
 
 ## Authentication & Authorization
 
-- **Strategy**: Database sessions (NextAuth.js). Session token stored in DB, renewed silently on each request. No forced re-login unless explicit logout or extended inactivity.
+- **Strategy**: JWT sessions (NextAuth.js). Token stored in cookie, maxAge 8h. No database session storage.
 - **Roles**: `SUPER_ADMIN`, `ADMIN`. Role stored on the `User` model.
 - **Super-admin**: Single account, credentials hardcoded in environment variables. Only account that can create/manage admin accounts.
 - **Public access**: Performance order public link requires no authentication. Route is fully public.
@@ -46,7 +46,7 @@ Browser
 
 ## Real-time (SSE)
 
-The public performance order view connects to a SSE Route Handler (`GET /api/public/shows/[slug]/stream`). When an admin updates or validates a performance order, the server broadcasts the new order to all connected clients. No WebSocket, no external service.
+The public performance order view connects to a SSE Route Handler (`GET /api/public/shows/[slug]/stream`). When an admin updates/validates a performance order or advances the current act, the server broadcasts the new order to all connected clients. No WebSocket, no external service.
 
 ## Data strategy
 
@@ -63,7 +63,7 @@ The public performance order view connects to a SSE Route Handler (`GET /api/pub
 | Reverse proxy | Traefik (TLS termination, routing) |
 | Container registry | GitHub Container Registry (ghcr.io) |
 | CI | GitHub Actions — lint, typecheck, Vitest on every PR |
-| CD | GitHub Actions self-hosted runner on Pi — triggered on release, pulls new image, restarts compose |
+| CD | GitHub Actions self-hosted runner on Pi — triggered on release or manual dispatch, pulls new image, restarts compose |
 
 ### Docker Compose services
 
@@ -74,7 +74,7 @@ The public performance order view connects to a SSE Route Handler (`GET /api/pub
 
 Database data persisted via Docker volume. App connects to DB via internal Docker network.
 
-`docker-compose.yml` is production-only (Traefik labels, resource limits, Pi networking). Local dev uses `npm run dev` + a standalone `docker compose up -d` for Postgres only — no Traefik, no production config.
+`docker-compose.yml` is production-only (Traefik labels, resource limits, Pi networking). Local dev uses `pnpm dev` with a local PostgreSQL instance.
 
 ## Decisions
 
@@ -83,7 +83,7 @@ Database data persisted via Docker volume. App connects to DB via internal Docke
 | Full-stack in Next.js | Yes | Single codebase, no inter-service overhead, sufficient for load |
 | No custom server | SSE over Route Handlers | Unidirectional stream is enough; avoids `ws` complexity |
 | ORM | Prisma | Type-safe queries, auto migrations, Prisma Studio for DB inspection |
-| Auth strategy | NextAuth.js + DB sessions | Minimal re-authentication, session lifespan configurable |
+| Auth strategy | NextAuth.js + JWT sessions | Stateless, no DB session storage, cookie-based |
 | Real-time transport | SSE | Server-to-client only; simpler than WebSocket for this use case |
 | Testing scope | Vitest on algorithm only | CRUD correctness covered by TypeScript; algorithm has non-trivial edge cases |
-| Deployment trigger | GitHub Release | Stable, explicit promotion gate before hitting production |
+| Deployment trigger | GitHub Release or manual dispatch | Stable, explicit promotion gate before hitting production |

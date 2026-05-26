@@ -6,22 +6,18 @@ Dance school management app — season tracking, classes, shows, performance ord
 
 ```bash
 # Dev
-npm run dev           # Dev server → http://localhost:3000
-npm run build         # Production build
-npm run lint          # ESLint
-npm run typecheck     # tsc --noEmit
+pnpm dev              # Dev server → http://localhost:3000
+pnpm build            # Production build
+pnpm lint             # ESLint
+pnpm typecheck        # tsc --noEmit
 
 # Tests (algorithm only — see Testing section)
-npm test              # Vitest
+pnpm test             # Vitest
 
 # Database
-npx prisma migrate dev    # Apply migrations + regenerate client
-npx prisma generate       # Regenerate client after schema change (no migration)
-npx prisma studio         # DB GUI → http://localhost:5555
-
-# Local infra
-docker compose up -d      # Start postgres container
-docker compose down       # Stop
+pnpm prisma migrate dev    # Apply migrations + regenerate client
+pnpm prisma generate       # Regenerate client after schema change (no migration)
+pnpm prisma studio         # DB GUI → http://localhost:5555
 ```
 
 ## Architecture
@@ -40,7 +36,7 @@ No SWR, no React Query, no global state library.
 
 ## Auth
 
-- NextAuth.js v5, database sessions (no JWT)
+- NextAuth.js v5, JWT sessions
 - Roles: `SUPER_ADMIN` (credentials from env vars, single hardcoded account) | `ADMIN`
 - Middleware protects all app routes; `/s/[slug]` is fully public
 - Only `SUPER_ADMIN` can create/manage admin accounts
@@ -48,8 +44,10 @@ No SWR, no React Query, no global state library.
 ## Domain gotchas
 
 - **One active season**: `Season.isActive = true` — enforced at app level, no DB constraint. Query active season explicitly; don't assume it exists.
-- **Participation = row existence**: A `Participation` row = student is in the act. No `enabled` flag. Creating an act auto-creates participation rows for all students in its class.
+- **Participation = row existence**: `ShowParticipation` links student↔show, `ActParticipation` links student↔act (with color). No `enabled` flag. Creating an act auto-creates participation rows for all students in its class.
 - **fixedPosition pins acts**: In the ordering algorithm, `Act.fixedPosition` locks an act to a specific position. Unpinned acts flow around them in their current order.
+- **Act.classId is optional**: An act can exist without a class link (e.g. opening/finale). Participation auto-creation only fires when `classId` is set.
+- **Scenes & Placements**: Acts contain ordered `Scene` entries. Each scene has `Placement` rows (student + x/y coordinates) for stage positioning.
 - **Teacher ≠ User**: Teachers have no app login — pure data entity, separate from `User`.
 - **Class is season-scoped**: Classes must be re-created per season via `seasonId` FK.
 - **Roll call is ephemeral**: `/app/classes/[id]` roll call tab has no save action — informational only.
@@ -62,8 +60,8 @@ No SWR, no React Query, no global state library.
 Vitest on ordering algorithm only. TypeScript strict mode covers CRUD correctness. No E2E tests.
 
 ```bash
-npm test                # Run Vitest
-npm test -- --watch     # Watch mode
+pnpm test               # Run Vitest
+pnpm test:watch         # Watch mode
 ```
 
 Do not add E2E tests — out of scope.

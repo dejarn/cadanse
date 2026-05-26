@@ -1,13 +1,13 @@
 # API
 
-_Last updated: 2026-05-07_
+_Last updated: 2026-05-26_
 
 ## Style & format
 
 - **Style**: REST
 - **Format**: JSON (`Content-Type: application/json`)
 - **Base path**: `/api`
-- **Auth**: Session cookie (NextAuth). All endpoints require a valid session unless marked **public**.
+- **Auth**: JWT session cookie (NextAuth). All endpoints require a valid session unless marked **public**.
 - **Roles**: `SUPER_ADMIN` > `ADMIN`. Role checked per endpoint where noted.
 
 ## Error codes
@@ -192,6 +192,8 @@ Returns `410` if token invalid. Consumes token on success (`usedAt = now`). Crea
 | `GET` | `/api/shows/[id]` | Get show with act list | ADMIN |
 | `PATCH` | `/api/shows/[id]` | Update show | ADMIN |
 | `DELETE` | `/api/shows/[id]` | Delete show | ADMIN |
+| `GET` | `/api/shows/[id]/participants` | List participating student IDs | ADMIN |
+| `POST` | `/api/shows/[id]/participants` | Add student to show | ADMIN |
 
 **GET /api/shows** response:
 ```json
@@ -221,6 +223,17 @@ Acts not included in list — use `GET /api/shows/[id]`.
 }
 ```
 
+**GET /api/shows/[id]/participants** response:
+```json
+{ "data": ["student-id-1", "student-id-2"] }
+```
+
+**POST /api/shows/[id]/participants** body:
+```json
+{ "studentId": "..." }
+```
+Adds student to show participation AND auto-creates act participations for all acts linked to classes the student is enrolled in.
+
 ---
 
 ## Acts
@@ -229,18 +242,18 @@ Acts not included in list — use `GET /api/shows/[id]`.
 |---|---|---|---|
 | `GET` | `/api/shows/[showId]/acts` | List acts for a show | ADMIN |
 | `POST` | `/api/shows/[showId]/acts` | Create act | ADMIN |
-| `PATCH` | `/api/acts/[id]` | Update act (name, fixedPosition) | ADMIN |
-| `DELETE` | `/api/acts/[id]` | Delete act | ADMIN |
-| `GET` | `/api/acts/[id]/participants` | List participating students | ADMIN |
-| `POST` | `/api/acts/[id]/participants` | Add student to act | ADMIN |
-| `DELETE` | `/api/acts/[id]/participants/[studentId]` | Remove student from act | ADMIN |
+| `PATCH` | `/api/shows/[showId]/acts/[actId]` | Update act (name, fixedPosition) | ADMIN |
+| `DELETE` | `/api/shows/[showId]/acts/[actId]` | Delete act | ADMIN |
+| `GET` | `/api/shows/[showId]/acts/[actId]/participants` | List participating students | ADMIN |
+| `POST` | `/api/shows/[showId]/acts/[actId]/participants` | Add student to act | ADMIN |
+| `DELETE` | `/api/shows/[showId]/acts/[actId]/participants` | Remove student from act | ADMIN |
 
 **GET /api/shows/[showId]/acts** response:
 ```json
 [{ "id": "...", "name": "Hip-hop juniors", "classId": "...", "fixedPosition": null, "createdAt": "..." }]
 ```
 
-**GET /api/acts/[id]/participants** response:
+**GET /api/shows/[showId]/acts/[actId]/participants** response:
 ```json
 [{ "id": "...", "firstName": "Léa", "lastName": "Martin" }]
 ```
@@ -250,14 +263,61 @@ Acts not included in list — use `GET /api/shows/[id]`.
 { "name": "Hip-hop juniors", "classId": "...", "fixedPosition": null }
 ```
 
-- On act creation, `Participation` rows are auto-created for all students enrolled in the act's class.
+- On act creation with a `classId`, `ActParticipation` rows are auto-created for all students enrolled in the act's class.
+- `classId` is optional — acts can exist without a class link.
 
-**PATCH /api/acts/[id]** body (partial):
+**PATCH /api/shows/[showId]/acts/[actId]** body (partial):
 ```json
 { "fixedPosition": 3 }
 ```
 
 - Set `fixedPosition: null` to unlock. Corresponds to the lock toggle in the UI.
+
+---
+
+## Scenes
+
+| Method | Path | Description | Role |
+|---|---|---|---|
+| `GET` | `/api/shows/[showId]/acts/[actId]/scenes` | List scenes with placements | ADMIN |
+| `POST` | `/api/shows/[showId]/acts/[actId]/scenes` | Create scene | ADMIN |
+| `PATCH` | `/api/shows/[showId]/acts/[actId]/scenes/[sceneId]` | Update scene | ADMIN |
+| `DELETE` | `/api/shows/[showId]/acts/[actId]/scenes/[sceneId]` | Delete scene | ADMIN |
+| `PUT` | `/api/shows/[showId]/acts/[actId]/scenes/order` | Reorder scenes | ADMIN |
+
+**GET /api/shows/[showId]/acts/[actId]/scenes** response:
+```json
+{
+  "data": [{
+    "id": "...", "name": "Entrée", "order": 0,
+    "placements": [
+      { "x": 0.5, "y": 0.3, "student": { "id": "...", "firstName": "Léa", "lastName": "Martin" } }
+    ]
+  }]
+}
+```
+
+**PUT /api/shows/[showId]/acts/[actId]/scenes/order** body:
+```json
+{ "ids": ["scene-id-2", "scene-id-1"] }
+```
+Reorders scenes to match the given ID array. Sets `order` to array index.
+
+## Placements
+
+| Method | Path | Description | Role |
+|---|---|---|---|
+| `PUT` | `/api/shows/[showId]/acts/[actId]/scenes/[sceneId]/placements` | Replace all placements for a scene | ADMIN |
+
+**PUT** body:
+```json
+{
+  "placements": [
+    { "studentId": "...", "x": 0.5, "y": 0.3 }
+  ]
+}
+```
+Replaces all placements for the scene. Only students who are `ActParticipation` members can be placed. Existing placements are deleted and recreated.
 
 ---
 
@@ -337,6 +397,7 @@ Response:
 |---|---|---|
 | `GET` | `/api/public/shows/[slug]` | Show metadata + ordered act list |
 | `GET` | `/api/public/shows/[slug]/stream` | SSE stream — pushes updated order on each admin save |
+| `GET` | `/api/public/shows/[slug]/acts/[actId]/placements` | Scene placements for an act |
 
 **GET /api/public/shows/[slug]** response:
 ```json
@@ -364,3 +425,19 @@ Response:
 ```
 
 `currentPosition: null` means no act is currently on stage (not started or finished — not distinguished by design).
+
+**GET /api/public/shows/[slug]/acts/[actId]/placements** response:
+```json
+{
+  "data": {
+    "actName": "Hip-hop juniors",
+    "showName": "Gala de printemps",
+    "scenes": [{
+      "id": "...", "name": "Entrée", "order": 0,
+      "placements": [
+        { "x": 0.5, "y": 0.3, "student": { "id": "...", "firstName": "Léa", "lastName": "Martin", "color": 0 } }
+      ]
+    }]
+  }
+}
+```
