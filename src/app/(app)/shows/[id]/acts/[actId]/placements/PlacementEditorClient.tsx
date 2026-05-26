@@ -6,12 +6,14 @@ import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Button from "@mui/material/Button"
 import Alert from "@mui/material/Alert"
-import Snackbar from "@mui/material/Snackbar"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import CheckIcon from "@mui/icons-material/Check"
 import ContentCopyIcon from "@mui/icons-material/ContentCopy"
 import SaveIcon from "@mui/icons-material/Save"
 import AddIcon from "@mui/icons-material/Add"
+import FlipCameraAndroidIcon from "@mui/icons-material/FlipCameraAndroid"
+import IconButton from "@mui/material/IconButton"
+import Tooltip from "@mui/material/Tooltip"
 import SceneTabs from "./SceneTabs"
 import StudentSidebar from "./StudentSidebar"
 import StageArea from "./StageArea"
@@ -49,6 +51,7 @@ export default function PlacementEditorClient({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [flipped, setFlipped] = useState(false)
 
   // Per-scene placements — Map<sceneId, Map<studentId, Placement>>
   const [scenePlacements, setScenePlacements] = useState<Map<string, Map<string, Placement>>>(() => {
@@ -89,6 +92,14 @@ export default function PlacementEditorClient({
   const placedStudentIds = useMemo(
     () => new Set(localPlacements.keys()),
     [localPlacements],
+  )
+
+  const displayPlacements = useMemo(
+    () =>
+      flipped
+        ? Array.from(localPlacements.values()).map((p) => ({ ...p, x: 100 - p.x, y: 100 - p.y }))
+        : Array.from(localPlacements.values()),
+    [localPlacements, flipped],
   )
 
   // --- Helpers ---
@@ -198,8 +209,9 @@ export default function PlacementEditorClient({
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!selectedStudentId || !stageRef.current || !activeSceneId) return
       const rect = stageRef.current.getBoundingClientRect()
-      const x = Math.round(((e.clientX - rect.left) / rect.width) * 100)
-      const y = Math.round(((e.clientY - rect.top) / rect.height) * 100)
+      let x = Math.round(((e.clientX - rect.left) / rect.width) * 100)
+      let y = Math.round(((e.clientY - rect.top) / rect.height) * 100)
+      if (flipped) { x = 100 - x; y = 100 - y }
       const clamped = { studentId: selectedStudentId, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }
       updateScenePlacements(activeSceneId, (prev) => {
         const next = new Map(prev)
@@ -208,15 +220,15 @@ export default function PlacementEditorClient({
       })
       setSelectedStudentId(null)
     },
-    [selectedStudentId, activeSceneId, updateScenePlacements],
+    [selectedStudentId, activeSceneId, updateScenePlacements, flipped],
   )
 
   const handleDotDrag = useCallback(
     (studentId: string, deltaX: number, deltaY: number) => {
       if (!stageRef.current || !activeSceneId) return
       const rect = stageRef.current.getBoundingClientRect()
-      const pxToPercentX = (deltaX / rect.width) * 100
-      const pxToPercentY = (deltaY / rect.height) * 100
+      const pxToPercentX = (flipped ? -1 : 1) * (deltaX / rect.width) * 100
+      const pxToPercentY = (flipped ? -1 : 1) * (deltaY / rect.height) * 100
       updateScenePlacements(activeSceneId, (prev) => {
         const existing = prev.get(studentId)
         if (!existing) return prev
@@ -229,7 +241,7 @@ export default function PlacementEditorClient({
         return next
       })
     },
-    [activeSceneId, updateScenePlacements],
+    [activeSceneId, updateScenePlacements, flipped],
   )
 
   const handleDotRemove = useCallback((studentId: string) => {
@@ -396,6 +408,25 @@ export default function PlacementEditorClient({
         </Box>
       </Box>
 
+      {/* Stage flip toggle */}
+      {activeScene && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 0.5 }}>
+          <Tooltip title="Retourner la scène">
+            <IconButton
+              size="small"
+              onClick={() => setFlipped((f) => !f)}
+              sx={{
+                color: flipped ? "primary.main" : "text.secondary",
+                bgcolor: flipped ? "rgba(212,168,83,0.12)" : "transparent",
+                "&:hover": { bgcolor: flipped ? "rgba(212,168,83,0.2)" : "rgba(255,255,255,0.05)" },
+              }}
+            >
+              <FlipCameraAndroidIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
+
       {/* Main area */}
       {activeScene ? (
         <Box sx={{ display: "flex", gap: 2, height: "calc(100vh - 300px)", minHeight: 400 }}>
@@ -410,7 +441,7 @@ export default function PlacementEditorClient({
           {/* Stage */}
           <StageArea
             ref={stageRef}
-            placements={Array.from(localPlacements.values())}
+            placements={displayPlacements}
             participants={Array.from(participantMap.values())}
             selectedStudentId={selectedStudentId}
             onClick={handleStageClick}
@@ -418,6 +449,7 @@ export default function PlacementEditorClient({
             onDotRemove={handleDotRemove}
             onSelectStudent={setSelectedStudentId}
             onColorChange={handleColorChange}
+            flipped={flipped}
           />
         </Box>
       ) : (

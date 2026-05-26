@@ -10,6 +10,7 @@ import IconButton from "@mui/material/IconButton"
 import Divider from "@mui/material/Divider"
 import TextField from "@mui/material/TextField"
 import Tooltip from "@mui/material/Tooltip"
+import Alert from "@mui/material/Alert"
 import CircularProgress from "@mui/material/CircularProgress"
 import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
@@ -233,6 +234,8 @@ export default function ShowsClient({ shows, seasonId }: Props) {
       >
         <ShowForm form={editForm} onChange={setEditForm} />
       </FormDialog>
+
+      {duplicateError && <Alert severity="error" sx={{ mt: 2 }}>{duplicateError}</Alert>}
 
       <ConfirmDialog
         open={!!crud.deleteDialog.selected}

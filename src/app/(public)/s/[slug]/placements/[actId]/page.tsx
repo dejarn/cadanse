@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
 import { prisma } from "@/lib/prisma"
-import { slugify } from "@/lib/slugify"
+import { resolveShowBySlug } from "@/lib/slug-resolver"
 import PlacementsPublicClient from "./PlacementsPublicClient"
 
 interface Props {
@@ -12,18 +12,21 @@ interface Props {
 export default async function PublicPlacementsPage({ params }: Props) {
   const { slug, actId } = await params
 
-  const shows = await prisma.show.findMany({
-    include: { season: true },
-  })
+  const showId = await resolveShowBySlug(slug)
+  if (!showId) notFound()
 
-  const show = shows.find((s) => slugify(s.name, s.season.label) === slug)
-  if (!show) notFound()
+  const [show, act] = await Promise.all([
+    prisma.show.findUnique({
+      where: { id: showId },
+      select: { id: true, name: true },
+    }),
+    prisma.act.findUnique({
+      where: { id: actId },
+      select: { showId: true, name: true },
+    }),
+  ])
 
-  const act = await prisma.act.findUnique({
-    where: { id: actId },
-    select: { showId: true, name: true },
-  })
-  if (!act || act.showId !== show.id) notFound()
+  if (!show || !act || act.showId !== show.id) notFound()
 
   const [scenes, participations] = await Promise.all([
     prisma.scene.findMany({

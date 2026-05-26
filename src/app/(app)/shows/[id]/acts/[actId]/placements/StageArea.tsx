@@ -30,6 +30,7 @@ interface Props {
   onDotRemove: (studentId: string) => void
   onSelectStudent: (studentId: string) => void
   onColorChange: (studentId: string, colorIndex: number) => void
+  flipped?: boolean
 }
 
 function DraggableDot({
@@ -74,7 +75,7 @@ function DraggableDot({
 }
 
 const StageArea = forwardRef<HTMLDivElement, Props>(
-  ({ placements, participants, selectedStudentId, onClick, onDotDrag, onDotRemove, onSelectStudent, onColorChange }, ref) => {
+  ({ placements, participants, selectedStudentId, onClick, onDotDrag, onDotRemove, onSelectStudent, onColorChange, flipped }, ref) => {
     const [activeId, setActiveId] = useState<string | null>(null)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string } | null>(null)
 
@@ -104,11 +105,6 @@ const StageArea = forwardRef<HTMLDivElement, Props>(
     const participantMap = useMemo(
       () => new Map(participants.map((p) => [p.student.id, p])),
       [participants],
-    )
-
-    const placementMap = useMemo(
-      () => new Map(placements.map((p) => [p.studentId, p])),
-      [placements],
     )
 
     const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -143,6 +139,7 @@ const StageArea = forwardRef<HTMLDivElement, Props>(
       >
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
           <StageBox
+            flipped={flipped}
             sx={{
               cursor: selectedStudentId ? "crosshair" : "default",
               "&": { maxWidth: 800 },

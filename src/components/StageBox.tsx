@@ -6,6 +6,7 @@ interface Props {
   children: React.ReactNode
   maxWidth?: number
   sx?: SxProps<Theme>
+  flipped?: boolean
 }
 
 const stageSx = {
@@ -29,17 +30,17 @@ const labelSx = {
   pointerEvents: "none" as const,
 }
 
-export default function StageBox({ children, maxWidth = 800, sx }: Props) {
+export default function StageBox({ children, maxWidth = 800, sx, flipped }: Props) {
   return (
     <Box sx={{ ...stageSx, maxWidth, ...sx }}>
       {children}
-      <Typography variant="caption" sx={{ ...labelSx, top: 4 }}>
+      <Typography variant="caption" sx={{ ...labelSx, ...(flipped ? { bottom: 4, top: "auto" } : { top: 4 }) }}>
         Public
       </Typography>
-      <Typography variant="caption" sx={{ position: "absolute", top: "50%", left: 4, transform: "translateY(-50%)", color: "text.secondary", opacity: 0.4, pointerEvents: "none" }}>
+      <Typography variant="caption" sx={{ position: "absolute", top: "50%", ...(flipped ? { right: 4, left: "auto" } : { left: 4 }), transform: "translateY(-50%)", color: "text.secondary", opacity: 0.4, pointerEvents: "none" }}>
         Côté cour
       </Typography>
-      <Typography variant="caption" sx={{ position: "absolute", top: "50%", right: 4, transform: "translateY(-50%)", color: "text.secondary", opacity: 0.4, pointerEvents: "none" }}>
+      <Typography variant="caption" sx={{ position: "absolute", top: "50%", ...(flipped ? { left: 4, right: "auto" } : { right: 4 }), transform: "translateY(-50%)", color: "text.secondary", opacity: 0.4, pointerEvents: "none" }}>
         Côté jardin
       </Typography>
     </Box>
