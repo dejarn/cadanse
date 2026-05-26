@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 
+export const runtime = "nodejs"
+
 const PUBLIC_PAGES = ["/login", "/invite/"]
 const PUBLIC_API_PREFIXES = ["/api/auth", "/api/public", "/api/invites/", "/api/register"]
 

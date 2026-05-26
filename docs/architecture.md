@@ -42,7 +42,7 @@ Browser
 - **Roles**: `SUPER_ADMIN`, `ADMIN`. Role stored on the `User` model.
 - **Super-admin**: Single account, credentials hardcoded in environment variables. Only account that can create/manage admin accounts.
 - **Public access**: Performance order public link requires no authentication. Route is fully public.
-- **Protected routes**: All `/app/*` routes require an active session. Middleware enforces this at the edge.
+- **Protected routes**: All `/app/*` routes require an active session. Middleware enforces this.
 
 ## Real-time (SSE)
 
