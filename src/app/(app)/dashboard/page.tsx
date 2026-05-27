@@ -3,6 +3,8 @@ import Box from "@mui/material/Box"
 import Grid from "@mui/material/Grid"
 import Card from "@mui/material/Card"
 import CardContent from "@mui/material/CardContent"
+import Button from "@mui/material/Button"
+import ChecklistIcon from "@mui/icons-material/Checklist"
 import {
   getActiveSeason,
   getClassCountBySeason,
@@ -53,6 +55,17 @@ export default async function DashboardPage() {
           </Grid>
         ))}
       </Grid>
+
+      <Box sx={{ mt: 4 }}>
+        <Button
+          href="/rollcall"
+          variant="outlined"
+          size="large"
+          startIcon={<ChecklistIcon />}
+        >
+          Feuille d&apos;appel
+        </Button>
+      </Box>
     </Box>
   )
 }

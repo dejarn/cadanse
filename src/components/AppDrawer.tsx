@@ -20,6 +20,16 @@ import { usePathname, useRouter } from "next/navigation"
 
 const DRAWER_WIDTH = 260
 
+const activeOverrides: Record<string, string> = {
+  "/rollcall": "/dashboard",
+}
+
+function isActive(pathname: string, href: string): boolean {
+  const mapped = activeOverrides[pathname]
+  if (mapped) return href === mapped
+  return pathname.startsWith(href)
+}
+
 const navItems = [
   { label: "Tableau de bord", href: "/dashboard", icon: <DashboardIcon /> },
   { label: "Élèves", href: "/students", icon: <PeopleIcon /> },
@@ -75,7 +85,7 @@ export default function AppDrawer({ open, onClose, isSuperAdmin }: Props) {
         {navItems.map((item, index) => (
           <ListItem key={item.href} disablePadding>
             <ListItemButton
-              selected={pathname.startsWith(item.href)}
+              selected={isActive(pathname, item.href)}
               onClick={() => navigate(item.href)}
               sx={{
                 mx: 1,
@@ -111,7 +121,7 @@ export default function AppDrawer({ open, onClose, isSuperAdmin }: Props) {
             {adminItems.map((item, index) => (
               <ListItem key={item.href} disablePadding>
                 <ListItemButton
-                  selected={pathname.startsWith(item.href)}
+                  selected={isActive(pathname, item.href)}
                   onClick={() => navigate(item.href)}
                   sx={{
                     mx: 1,

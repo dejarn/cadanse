@@ -12,6 +12,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/students": "Élèves",
   "/teachers": "Professeurs",
   "/classes": "Cours",
+  "/rollcall": "Tableau de bord",
   "/shows": "Spectacles",
   "/admin/users": "Comptes",
   "/admin/seasons": "Saisons",
