@@ -109,7 +109,7 @@ export default function ShowsClient({ shows, seasonId }: Props) {
     const res = await fetch("/api/shows", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: show.name + " - Copie", date: show.date, seasonId }),
+      body: JSON.stringify({ name: show.name + " - Copie", date: show.date, seasonId, duplicateFromId: show.id }),
     })
     setDuplicateLoadingId(null)
     if (!res.ok) {

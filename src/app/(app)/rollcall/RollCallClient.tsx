@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback, useSyncExternalStore } from "react"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 import Autocomplete from "@mui/material/Autocomplete"
@@ -40,19 +40,20 @@ function saveAttendance(classId: string, data: Record<string, boolean>) {
   sessionStorage.setItem(storageKey(classId), JSON.stringify(data))
 }
 
+const emptySubscribe = () => () => {}
+function useHydrated() {
+  return useSyncExternalStore(emptySubscribe, () => true, () => false)
+}
+
 export default function RollCallClient({ classes }: Props) {
   const [selectedClassId, setSelectedClassId] = useState<string>("")
   const [attendance, setAttendance] = useState<Record<string, boolean>>({})
-  const [hydrated, setHydrated] = useState(false)
+  const hydrated = useHydrated()
 
-  useEffect(() => {
-    if (selectedClassId) {
-      setAttendance(loadAttendance(selectedClassId))
-    } else {
-      setAttendance({})
-    }
-    setHydrated(true)
-  }, [selectedClassId])
+  const selectClass = useCallback((classId: string) => {
+    setSelectedClassId(classId)
+    setAttendance(classId ? loadAttendance(classId) : {})
+  }, [])
 
   const toggle = useCallback(
     (studentId: string) => {
@@ -82,8 +83,7 @@ export default function RollCallClient({ classes }: Props) {
         getOptionLabel={(cls) => `${cls.name} — ${cls.schedule} · ${cls.teacherName}`}
         value={classes.find((c) => c.id === selectedClassId) ?? null}
         onChange={(_, cls) => {
-          setSelectedClassId(cls?.id ?? "")
-          setHydrated(false)
+          selectClass(cls?.id ?? "")
         }}
         renderInput={(params) => <TextField {...params} label="Cours" placeholder="Rechercher un cours…" />}
         size="small"
