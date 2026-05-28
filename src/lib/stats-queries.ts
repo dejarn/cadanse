@@ -1,18 +1,33 @@
 import { cache } from "react"
 import { prisma } from "@/lib/prisma"
+import { slugify } from "@/lib/slugify"
 
 export const getActiveSeason = cache(() =>
   prisma.season.findFirst({ where: { isActive: true } }),
 )
 
-export const getStudentCount = cache(() => prisma.student.count())
+export const getUpcomingShow = cache(async (seasonId: string) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-export const getTeacherCount = cache(() => prisma.teacher.count())
+  const show = await prisma.show.findFirst({
+    where: { seasonId, date: { gte: today } },
+    orderBy: { date: "asc" },
+    include: {
+      season: { select: { label: true } },
+      acts: { select: { duration: true } },
+    },
+  })
+  if (!show) return null
 
-export const getClassCountBySeason = cache((seasonId: string) =>
-  prisma.class.count({ where: { seasonId } }),
-)
-
-export const getShowCountBySeason = cache((seasonId: string) =>
-  prisma.show.count({ where: { seasonId } }),
-)
+  return {
+    id: show.id,
+    name: show.name,
+    date: show.date,
+    seasonLabel: show.season.label,
+    totalActs: show.acts.length,
+    totalDuration: show.acts.reduce((sum, a) => sum + (a.duration ?? 0), 0),
+    missingDuration: show.acts.filter((a) => a.duration == null).length,
+    slug: slugify(show.name, show.season.label),
+  }
+})
