@@ -131,6 +131,7 @@ model Show {
 model Act {
   id            String   @id @default(uuid())
   name          String
+  description   String?
   classId       String?
   showId        String
   fixedPosition Int?

@@ -23,11 +23,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id: showId } = await params
-  const { name, classId, fixedPosition, duration } = await req.json()
+  const { name, classId, fixedPosition, duration, description } = await req.json()
 
   const act = await prisma.$transaction(async (tx) => {
     const newAct = await tx.act.create({
-      data: { name, classId, showId, fixedPosition, duration },
+      data: {
+        name,
+        classId,
+        showId,
+        fixedPosition,
+        duration,
+        description: description?.trim() ? description.trim() : null,
+      },
     })
 
     // Auto-populate ActParticipation from class enrollments

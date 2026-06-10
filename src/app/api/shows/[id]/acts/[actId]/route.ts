@@ -12,12 +12,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json()
 
   // Whitelist user-editable fields to prevent mass assignment
-  const { name, fixedPosition, classId, duration } = body
+  const { name, fixedPosition, classId, duration, description } = body
   const data: Record<string, unknown> = {}
   if (name !== undefined) data.name = name
   if (fixedPosition !== undefined) data.fixedPosition = fixedPosition
   if (classId !== undefined) data.classId = classId
   if (duration !== undefined) data.duration = duration
+  if (description !== undefined) data.description = description?.trim() ? description.trim() : null
 
   // Wrap act update and participation rebuild in a single transaction
   const act = await prisma.$transaction(async (tx) => {

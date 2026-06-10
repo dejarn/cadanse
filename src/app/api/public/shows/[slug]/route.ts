@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveShowBySlug } from "@/lib/slug-resolver"
+import { toPublicAct, publicActInclude } from "@/lib/publicAct"
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -12,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     where: { id: showId },
     include: {
       actPositions: {
-        include: { act: true },
+        include: publicActInclude,
         orderBy: { position: "asc" },
       },
     },
@@ -26,11 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       name: show.name,
       date: show.date,
       currentPosition: show.currentPosition,
-      acts: show.actPositions.map((ap) => ({
-        id: ap.actId,
-        name: ap.act.name,
-        position: ap.position,
-      })),
+      acts: show.actPositions.map(toPublicAct),
     },
   })
 }

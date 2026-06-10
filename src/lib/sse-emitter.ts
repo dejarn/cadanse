@@ -1,4 +1,5 @@
 import { EventEmitter } from "events"
+import type { PublicAct } from "@/lib/publicAct"
 
 const g = globalThis as unknown as { showEmitter: EventEmitter }
 
@@ -10,7 +11,7 @@ if (!g.showEmitter) {
 export const showEmitter = g.showEmitter
 
 export type ShowPayload = {
-  acts: { id: string; name: string; position: number }[]
+  acts: PublicAct[]
   currentPosition: number | null
 }
 

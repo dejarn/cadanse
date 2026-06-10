@@ -55,7 +55,7 @@ interface Props {
   classes: Class[]
 }
 
-const emptyForm = { name: "", classId: "", durationMin: "", durationSec: "" }
+const emptyForm = { name: "", classId: "", durationMin: "", durationSec: "", description: "" }
 
 type ActFormState = typeof emptyForm
 
@@ -110,6 +110,16 @@ function ActFormFields({
           max={59}
         />
       </Box>
+      <TextField
+        label="Description"
+        value={form.description}
+        onChange={(e) => onChange({ ...form, description: e.target.value })}
+        helperText="Affichée sur la page publique du spectacle."
+        fullWidth
+        size="small"
+        multiline
+        minRows={2}
+      />
     </Box>
   )
 }
@@ -212,11 +222,12 @@ export default function OrderClient({ show, classes }: Props) {
       classId: act.classId ?? "",
       durationMin: act.duration != null ? String(Math.floor(act.duration / 60)) : "",
       durationSec: act.duration != null ? String(act.duration % 60) : "",
+      description: act.description ?? "",
     })
   }
 
   async function handleEdit() {
-    await crud.submitEdit({ name: editForm.name, classId: editForm.classId || null, duration: parseDuration(editForm) })
+    await crud.submitEdit({ name: editForm.name, classId: editForm.classId || null, duration: parseDuration(editForm), description: editForm.description })
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -225,6 +236,7 @@ export default function OrderClient({ show, classes }: Props) {
       name: createForm.name,
       classId: createForm.classId || null,
       duration: parseDuration(createForm),
+      description: createForm.description,
     })
     if (ok) setCreateForm(emptyForm)
   }

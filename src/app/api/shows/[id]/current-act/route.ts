@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { broadcastShow } from "@/lib/sse-emitter"
+import { toPublicAct, publicActInclude } from "@/lib/publicAct"
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -15,18 +16,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: { currentPosition },
     include: {
       actPositions: {
-        include: { act: true },
+        include: publicActInclude,
         orderBy: { position: "asc" },
       },
     },
   })
 
   broadcastShow(id, {
-    acts: show.actPositions.map((ap) => ({
-      id: ap.actId,
-      name: ap.act.name,
-      position: ap.position,
-    })),
+    acts: show.actPositions.map(toPublicAct),
     currentPosition: show.currentPosition,
   })
 
