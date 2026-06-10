@@ -3,6 +3,7 @@ import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
 import { prisma } from "@/lib/prisma"
 import { resolveShowBySlug } from "@/lib/slug-resolver"
+import { toPublicAct, publicActInclude } from "@/lib/publicAct"
 import ShowPublicClient from "./ShowPublicClient"
 
 interface Props {
@@ -19,7 +20,7 @@ export default async function PublicShowPage({ params }: Props) {
     where: { id: showId },
     include: {
       actPositions: {
-        include: { act: { include: { class: { include: { teacher: true } } } } },
+        include: publicActInclude,
         orderBy: { position: "asc" },
       },
     },
@@ -27,15 +28,7 @@ export default async function PublicShowPage({ params }: Props) {
 
   if (!show) notFound()
 
-  const orderedActs = show.actPositions.map((ap) => ({
-    id: ap.actId,
-    name: ap.act.name,
-    position: ap.position,
-    className: ap.act.class?.name ?? null,
-    teacherName: ap.act.class
-      ? ap.act.class.teacher.displayName ?? `${ap.act.class.teacher.firstName} ${ap.act.class.teacher.lastName}`
-      : null,
-  }))
+  const orderedActs = show.actPositions.map(toPublicAct)
 
   return (
     <Box sx={{ maxWidth: 600, mx: "auto" }}>

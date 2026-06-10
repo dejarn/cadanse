@@ -12,6 +12,8 @@ interface Act {
   position: number
   className: string | null
   teacherName: string | null
+  description: string | null
+  schedule: string | null
 }
 
 interface SSEPayload {
@@ -96,6 +98,9 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
           {acts.map((act) => {
             const isCurrent = currentPosition !== null && act.position === currentPosition
             const isPast = currentPosition !== null && act.position < currentPosition
+            const captionLines = act.description
+              ? [act.description]
+              : [act.className, act.schedule].filter(Boolean)
             return (
               <Box
                 key={act.id}
@@ -124,9 +129,16 @@ export default function ShowPublicClient({ initialActs, currentPosition: initial
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
                   <Box>
                     <Typography variant="body1">{act.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {act.className ? `${act.className} · ${act.teacherName}` : null}
-                    </Typography>
+                    {captionLines.map((line, i) => (
+                      <Typography
+                        key={i}
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block", whiteSpace: "normal", overflowWrap: "anywhere" }}
+                      >
+                        {line}
+                      </Typography>
+                    ))}
                   </Box>
                   {isCurrent && (
                     <Chip

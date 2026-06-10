@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { broadcastShow } from "@/lib/sse-emitter"
+import { toPublicAct, publicActInclude } from "@/lib/publicAct"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -35,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     })
     const rows = await tx.actPosition.findMany({
       where: { showId },
-      include: { act: true },
+      include: publicActInclude,
       orderBy: { position: "asc" },
     })
     const show = await tx.show.findUnique({ where: { id: showId } })
@@ -45,11 +46,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!show) return NextResponse.json({ error: "Show not found" }, { status: 404 })
 
   broadcastShow(showId, {
-    acts: rows.map((p) => ({
-      id: p.actId,
-      name: p.act.name,
-      position: p.position,
-    })),
+    acts: rows.map(toPublicAct),
     currentPosition: show?.currentPosition ?? null,
   })
 
