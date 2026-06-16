@@ -5,9 +5,50 @@ on:
     types: [published]
   workflow_dispatch:
 
+env:
+  # → ghcr.io/dejarn/cadanse/app
+  IMAGE: ghcr.io/${{ github.repository }}/app
+
 jobs:
+  # Build the image in the cloud (native arm64 runner — free on public repos)
+  # and push to GHCR. The Pi never builds: it only pulls (see deploy job).
+  build:
+    name: Build & push image
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_name || 'manual' }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Pull the freshly built image on the Pi, run migrations, (re)start the app.
+  # No build happens here — the Pi only orchestrates containers.
   deploy:
-    name: Build & deploy on Pi
+    name: Deploy on Pi
+    needs: build
     runs-on: [self-hosted, linux, arm64]
     environment: production
     env:
@@ -18,14 +59,22 @@ jobs:
       AUTH_URL: ${{ secrets.AUTH_URL }}
       SUPER_ADMIN_USERNAME: ${{ secrets.SUPER_ADMIN_USERNAME }}
       SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
-      APP_HOST: ${{ secrets.APP_HOST }}
+      # Routing (host/TLS) now lives in the external reverse-proxy's dynamic
+      # config on the Pi (file provider), so APP_HOST is gone from here.
+      APP_TAG: ${{ github.ref_name || 'manual' }}
+      # Isolate this stack from other compose projects on the same Pi (e.g. lumi)
+      # so --remove-orphans never touches another app's containers.
+      COMPOSE_PROJECT_NAME: cadanse
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build images
-        run: docker compose build
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Pull image
+        run: docker compose pull app migrate
 
       - name: Start database
         run: docker compose up -d db --wait
@@ -37,5 +86,7 @@ jobs:
         run: docker compose up -d app --remove-orphans --wait
 
       - name: Prune old images
+        # `docker image prune -f` removes only dangling (untagged) images — tagged
+        # rollback images are never deleted by this step.
         if: always()
         run: docker image prune -f
