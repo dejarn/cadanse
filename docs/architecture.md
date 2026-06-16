@@ -9,7 +9,7 @@ Single full-stack Next.js application. No separate backend process. PostgreSQL r
 ```
 Browser
   │
-  ├── HTTPS ──► Traefik (reverse proxy)
+  ├── HTTPS ──► external reverse proxy (TLS)
   │                  │
   │                  ▼
   │            Next.js (App Router)
@@ -60,10 +60,10 @@ The public performance order view connects to a SSE Route Handler (`GET /api/pub
 |---|---|
 | Host | Raspberry Pi (self-hosted) |
 | Containerization | Docker Compose |
-| Reverse proxy | Traefik (TLS termination, routing) |
+| Reverse proxy | External reverse proxy on the shared `edge` network (TLS + routing configured in the proxy itself, outside this repo) |
 | Container registry | GitHub Container Registry (ghcr.io) |
 | CI | GitHub Actions — lint, typecheck, Vitest on every PR |
-| CD | GitHub Actions self-hosted runner on Pi — triggered on release or manual dispatch, pulls new image, restarts compose |
+| CD | GitHub Actions — image built & pushed to GHCR on a cloud arm64 runner; the Pi's self-hosted runner only pulls and restarts compose (release or manual dispatch) |
 
 ### Docker Compose services
 
@@ -74,7 +74,7 @@ The public performance order view connects to a SSE Route Handler (`GET /api/pub
 
 Database data persisted via Docker volume. App connects to DB via internal Docker network.
 
-`docker-compose.yml` is production-only (Traefik labels, resource limits, Pi networking). Local dev uses `pnpm dev` with a local PostgreSQL instance.
+`docker-compose.yml` is production-only (reverse-proxy network join, resource limits, Pi networking). Local dev uses `pnpm dev` with a local PostgreSQL instance.
 
 ## Decisions
 

@@ -42,12 +42,18 @@ pnpm dev
 - App: `http://localhost:3000`
 - Database GUI: `pnpm prisma studio` → `http://localhost:5555`
 
-### Production (Docker + Traefik)
+### Production (Docker)
 
-`docker-compose.yml` targets a host already running Traefik (TLS termination, routing). It starts PostgreSQL, runs migrations, then the app with Traefik labels and an external `traefik` network. Set `APP_HOST` and the other production variables before deploy.
+Images are built in CI on a cloud arm64 runner and pushed to GHCR; the Pi only
+pulls and runs them. `docker-compose.yml` targets a host already running an
+external reverse proxy on the shared `edge` network (TLS + routing live in the
+proxy, outside this repo). It starts PostgreSQL, runs migrations, then the app.
+Deployment is driven by the `Deploy` workflow (GitHub Release / manual dispatch);
+set the production secrets in the `production` environment beforehand.
 
 ```bash
-docker compose up --build -d
+# Manual equivalent on the host (CI does this automatically):
+docker compose pull && docker compose up -d
 ```
 
 ## Documentation

@@ -76,7 +76,7 @@ Do not add E2E tests — out of scope.
 
 ## Deployment
 
-Raspberry Pi, Docker Compose, Traefik TLS. CD triggers on GitHub Release.
+Raspberry Pi, Docker Compose, external reverse proxy (TLS) on the shared `edge` network. Images built in CI on a cloud arm64 runner and pushed to GHCR; the Pi only pulls. CD triggers on GitHub Release.
 
 CI (every PR): lint + typecheck + Vitest via GitHub Actions.
 
