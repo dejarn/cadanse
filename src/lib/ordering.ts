@@ -26,10 +26,38 @@ export interface ParticipantMap {
 
 /**
  * Penalty for placing two acts with shared students `gap` positions apart.
- * gap 1 (back-to-back) → 4, gap 2 → 3, gap 3 → 2, gap 4 → 1, gap 5+ → 0
+ * Non-linear: gap 1 (back-to-back) dominates everything else so the optimiser
+ * eliminates back-to-back conflicts first, then spaces the rest.
+ * gap 1 → 100, gap 2 → 4, gap 3 → 2, gap 4 → 1, gap 5+ → 0
  */
+const GAP_PENALTIES = [0, 100, 4, 2, 1]
 function gapPenalty(gap: number): number {
-  return Math.max(0, 5 - gap)
+  return GAP_PENALTIES[gap] ?? 0
+}
+
+export interface Conflict {
+  aIndex: number
+  bIndex: number
+  shared: string[]
+}
+
+/**
+ * Find back-to-back conflicts in an ordering: consecutive act pairs sharing
+ * at least one student. `order` is an array of actIds in performance order.
+ */
+export function findConflicts(
+  order: string[],
+  participants: ParticipantMap,
+): Conflict[] {
+  const out: Conflict[] = []
+  for (let i = 0; i < order.length - 1; i++) {
+    const a = participants[order[i]]
+    const b = participants[order[i + 1]]
+    if (!a || !b) continue
+    const shared = [...a].filter((s) => b.has(s))
+    if (shared.length) out.push({ aIndex: i, bIndex: i + 1, shared })
+  }
+  return out
 }
 
 /** Score an entire ordering — sum of penalties for all student-adjacent acts. Lower = better. */

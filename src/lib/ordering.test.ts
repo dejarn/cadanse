@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { generateOrder, scoreOrder } from "./ordering"
+import { generateOrder, scoreOrder, findConflicts } from "./ordering"
 import type { Act } from "@prisma/client"
 import type { ParticipantMap } from "./ordering"
 
@@ -211,13 +211,22 @@ describe("scoreOrder", () => {
     expect(scoreOrder([{ actId: "a", position: 0 }], { a: new Set(["s1"]) })).toBe(0)
   })
 
-  it("penalises back-to-back acts sharing a student (gap 1 → penalty 4)", () => {
+  it("heavily penalises back-to-back acts sharing a student (gap 1 → penalty 100)", () => {
     const order = [
       { actId: "a", position: 0 },
       { actId: "b", position: 1 },
     ]
     const p: ParticipantMap = { a: new Set(["s1"]), b: new Set(["s1"]) }
-    // gap=1, penalty=4, pair counted twice then /2 = 4
+    // gap=1, penalty=100, pair counted twice then /2 = 100
+    expect(scoreOrder(order, p)).toBe(100)
+  })
+
+  it("gap 2 penalty (4) is far below a back-to-back (100)", () => {
+    const order = [
+      { actId: "a", position: 0 },
+      { actId: "b", position: 2 },
+    ]
+    const p: ParticipantMap = { a: new Set(["s1"]), b: new Set(["s1"]) }
     expect(scoreOrder(order, p)).toBe(4)
   })
 
@@ -237,5 +246,55 @@ describe("scoreOrder", () => {
     ]
     const p: ParticipantMap = { a: new Set(["s1"]), b: new Set(["s2"]) }
     expect(scoreOrder(order, p)).toBe(0)
+  })
+})
+
+describe("findConflicts", () => {
+  it("returns empty for a disjoint order", () => {
+    const order = ["a", "b", "c"]
+    const p: ParticipantMap = { a: new Set(["s1"]), b: new Set(["s2"]), c: new Set(["s3"]) }
+    expect(findConflicts(order, p)).toEqual([])
+  })
+
+  it("detects a back-to-back pair with the shared students", () => {
+    const order = ["a", "b", "c"]
+    const p: ParticipantMap = {
+      a: new Set(["s1", "s2"]),
+      b: new Set(["s2", "s3"]),
+      c: new Set(["s4"]),
+    }
+    const conflicts = findConflicts(order, p)
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]).toMatchObject({ aIndex: 0, bIndex: 1 })
+    expect(conflicts[0].shared).toEqual(["s2"])
+  })
+
+  it("counts one conflict per adjacent boundary", () => {
+    const order = ["a", "b", "c"]
+    const p: ParticipantMap = {
+      a: new Set(["s1"]),
+      b: new Set(["s1"]),
+      c: new Set(["s1"]),
+    }
+    expect(findConflicts(order, p)).toHaveLength(2) // a↔b and b↔c
+  })
+
+  it("ignores acts with no participants", () => {
+    const order = ["a", "b"]
+    const p: ParticipantMap = { a: new Set(["s1"]) } // b missing
+    expect(findConflicts(order, p)).toEqual([])
+  })
+
+  it("avoidable back-to-back is eliminated by generateOrder", () => {
+    const acts = [makeAct("a"), makeAct("b"), makeAct("c")]
+    // a and c share a student; b is disjoint → optimal puts b between them
+    const participants: ParticipantMap = {
+      a: new Set(["s1"]),
+      b: new Set(["s2"]),
+      c: new Set(["s1"]),
+    }
+    const result = generateOrder(acts, [], participants, 42)
+    const order = [...result].sort((x, y) => x.position - y.position).map((r) => r.actId)
+    expect(findConflicts(order, participants)).toEqual([])
   })
 })

@@ -19,6 +19,10 @@ import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
 import Chip from "@mui/material/Chip"
 import CircularProgress from "@mui/material/CircularProgress"
+import Dialog from "@mui/material/Dialog"
+import DialogTitle from "@mui/material/DialogTitle"
+import DialogContent from "@mui/material/DialogContent"
+import DialogActions from "@mui/material/DialogActions"
 import Divider from "@mui/material/Divider"
 import IconButton from "@mui/material/IconButton"
 import MenuItem from "@mui/material/MenuItem"
@@ -28,11 +32,13 @@ import Typography from "@mui/material/Typography"
 import AddIcon from "@mui/icons-material/Add"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh"
+import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import DeleteIcon from "@mui/icons-material/Delete"
 import EditIcon from "@mui/icons-material/Edit"
 import PlaceIcon from "@mui/icons-material/Place"
 import GroupIcon from "@mui/icons-material/Group"
 import LiveTvIcon from "@mui/icons-material/LiveTv"
+import WarningAmberIcon from "@mui/icons-material/WarningAmber"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import DurationStepper from "@/components/DurationStepper"
 import EntityRow from "@/components/EntityRow"
@@ -40,6 +46,7 @@ import FormDialog from "@/components/FormDialog"
 import SortableActRow from "./SortableActRow"
 import { useCrudDialogs } from "@/hooks/useCrudDialogs"
 import { applyDragWithLocks } from "@/lib/drag-with-locks"
+import { findConflicts, type Conflict, type ParticipantMap } from "@/lib/ordering"
 import { teacherName } from "@/lib/teacherName"
 import type { Act, ActPosition, Class, Show, Teacher } from "@prisma/client"
 
@@ -53,6 +60,8 @@ type ShowWithActs = Show & {
 interface Props {
   show: ShowWithActs
   classes: Class[]
+  participants: Record<string, string[]>
+  studentNames: Record<string, string>
 }
 
 const emptyForm = { name: "", classId: "", durationMin: "", durationSec: "", description: "" }
@@ -130,7 +139,7 @@ function parseDuration(form: ActFormState) {
   return (min || sec) ? min * 60 + sec : null
 }
 
-export default function OrderClient({ show, classes }: Props) {
+export default function OrderClient({ show, classes, participants, studentNames }: Props) {
   const router = useRouter()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down("md"))
@@ -153,6 +162,13 @@ export default function OrderClient({ show, classes }: Props) {
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // ---- Move-to-position dialog ----
+  const [moveActId, setMoveActId] = useState<string | null>(null)
+  const [moveValue, setMoveValue] = useState("")
+
+  // ---- Conflicts detail dialog ----
+  const [conflictsOpen, setConflictsOpen] = useState(false)
 
   // ---- Warn on unsaved navigation when in edit mode ----
   useEffect(() => {
@@ -185,6 +201,25 @@ export default function OrderClient({ show, classes }: Props) {
     const posMap = new Map(show.actPositions.map((p) => [p.actId, p.position]))
     return [...show.acts].sort((a, b) => (posMap.get(a.id) ?? Infinity) - (posMap.get(b.id) ?? Infinity))
   }, [show.acts, show.actPositions])
+
+  const participantMap = useMemo<ParticipantMap>(() => {
+    const map: ParticipantMap = {}
+    for (const [actId, ids] of Object.entries(participants)) map[actId] = new Set(ids)
+    return map
+  }, [participants])
+
+  // Live conflicts in edit mode (recomputed on every drag / move / generate)
+  const editConflicts = useMemo(
+    () => findConflicts(localOrder, participantMap),
+    [localOrder, participantMap],
+  )
+  // Conflicts of the saved order, shown in read view
+  const viewConflicts = useMemo(
+    () => findConflicts(viewOrder.map((a) => a.id), participantMap),
+    [viewOrder, participantMap],
+  )
+  const conflicts = editMode ? editConflicts : viewConflicts
+  const conflictOrder = editMode ? localOrder : viewOrder.map((a) => a.id)
 
   const sensors = useSensors(useSensor(PointerSensor))
 
@@ -262,6 +297,26 @@ export default function OrderClient({ show, classes }: Props) {
       if (next.has(actId)) next.delete(actId)
       else next.add(actId)
       return next
+    })
+  }
+
+  function openMove(actId: string) {
+    setMoveActId(actId)
+    setMoveValue(String(localOrder.indexOf(actId) + 1))
+  }
+
+  function handleMove(e: React.FormEvent) {
+    e.preventDefault()
+    if (!moveActId) return
+    const target = parseInt(moveValue, 10)
+    const actId = moveActId
+    setMoveActId(null)
+    if (Number.isNaN(target)) return
+    setLocalOrder((prev) => {
+      const clamped = Math.min(Math.max(target, 1), prev.length)
+      const overId = prev[clamped - 1]
+      if (!overId) return prev
+      return applyDragWithLocks(prev, actId, overId, lockedIds)
     })
   }
 
@@ -343,6 +398,33 @@ export default function OrderClient({ show, classes }: Props) {
     router.refresh()
   }
 
+  function conflictChip(count: number, withSuccess: boolean) {
+    if (count === 0) {
+      if (!withSuccess) return null
+      return (
+        <Chip
+          icon={<CheckCircleIcon />}
+          label="Aucun conflit"
+          size="small"
+          variant="outlined"
+          sx={{ height: 24, borderColor: "success.main", color: "success.main" }}
+        />
+      )
+    }
+    return (
+      <Tooltip title="Voir le détail des conflits">
+        <Chip
+          icon={<WarningAmberIcon />}
+          label={`${count} conflit${count > 1 ? "s" : ""}`}
+          size="small"
+          variant="outlined"
+          onClick={() => setConflictsOpen(true)}
+          sx={{ height: 24, borderColor: "warning.main", color: "warning.main", cursor: "pointer" }}
+        />
+      </Tooltip>
+    )
+  }
+
   return (
     <>
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 1, gap: 2 }}>
@@ -358,6 +440,13 @@ export default function OrderClient({ show, classes }: Props) {
               {durationStats.total > 0 ? durationStats.formatted : "0min"}
               {durationStats.missing > 0 && ` · ${durationStats.missing} sans durée`}
             </Typography>
+          )}
+          {(editMode || viewConflicts.length > 0) && (
+            <Box sx={{ mt: 1 }}>
+              {editMode
+                ? conflictChip(editConflicts.length, true)
+                : conflictChip(viewConflicts.length, false)}
+            </Box>
           )}
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
@@ -382,7 +471,7 @@ export default function OrderClient({ show, classes }: Props) {
         </Box>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mb: 3 }}>
+      <Box sx={{ display: "flex", gap: 1, alignItems: "center", justifyContent: "flex-end", mb: 3 }}>
         {editMode ? (
           <>
             <Button
@@ -467,6 +556,7 @@ export default function OrderClient({ show, classes }: Props) {
                     position={index + 1}
                     isLocked={lockedIds.has(actId)}
                     onToggleLock={toggleLock}
+                    onRequestMove={openMove}
                   />
                 )
               })}
@@ -562,6 +652,26 @@ export default function OrderClient({ show, classes }: Props) {
         <ActFormFields form={editForm} onChange={setEditForm} classes={classes} />
       </FormDialog>
 
+      <FormDialog
+        open={!!moveActId}
+        title="Déplacer le tableau"
+        submitLabel="Déplacer"
+        onClose={() => setMoveActId(null)}
+        onSubmit={handleMove}
+      >
+        <TextField
+          label="Nouvelle position"
+          type="number"
+          value={moveValue}
+          onChange={(e) => setMoveValue(e.target.value)}
+          slotProps={{ htmlInput: { min: 1, max: localOrder.length } }}
+          helperText={`Entre 1 et ${localOrder.length}`}
+          autoFocus
+          fullWidth
+          size="small"
+        />
+      </FormDialog>
+
       <ConfirmDialog
         open={!!crud.deleteDialog.selected}
         title="Supprimer le tableau"
@@ -572,6 +682,37 @@ export default function OrderClient({ show, classes }: Props) {
         onConfirm={crud.confirmDelete}
         onClose={crud.closeDelete}
       />
+
+      <Dialog open={conflictsOpen} onClose={() => setConflictsOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberIcon sx={{ color: "warning.main" }} fontSize="small" />
+          {conflicts.length} conflit{conflicts.length > 1 ? "s" : ""}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Ces élèves enchaînent deux tableaux consécutifs.
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {conflicts.map((c: Conflict) => {
+              const nameA = actMap.get(conflictOrder[c.aIndex])?.name ?? "?"
+              const nameB = actMap.get(conflictOrder[c.bIndex])?.name ?? "?"
+              return (
+                <Box key={`${c.aIndex}-${c.bIndex}`}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Tableau {c.aIndex + 1} · {nameA} ↔ Tableau {c.bIndex + 1} · {nameB}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {c.shared.map((id) => studentNames[id] ?? id).join(", ")}
+                  </Typography>
+                </Box>
+              )
+            })}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConflictsOpen(false)}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }
