@@ -16,6 +16,7 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.AUTH_URL ?? "http://localhost:3000"),
   title: "Cadanse",
   description: "Let's dance!",
   icons: {

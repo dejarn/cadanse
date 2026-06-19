@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Typography from "@mui/material/Typography"
 import Box from "@mui/material/Box"
@@ -8,6 +9,31 @@ import ShowPublicClient from "./ShowPublicClient"
 
 interface Props {
   params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+
+  const showId = await resolveShowBySlug(slug)
+  if (!showId) return { title: "Cadanse" }
+
+  const show = await prisma.show.findUnique({
+    where: { id: showId },
+    select: { name: true, date: true, season: { select: { label: true } } },
+  })
+  if (!show) return { title: "Cadanse" }
+
+  const dateLabel = new Date(show.date).toLocaleDateString("fr-FR", { dateStyle: "long" })
+  const title = `${show.name} — ${show.season.label}`
+  const description = `${dateLabel} · Saison ${show.season.label}`
+  const url = `/s/${slug}`
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website", url },
+    twitter: { card: "summary", title, description },
+  }
 }
 
 export default async function PublicShowPage({ params }: Props) {
