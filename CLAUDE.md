@@ -18,6 +18,10 @@ pnpm test             # Vitest
 pnpm prisma migrate dev    # Apply migrations + regenerate client
 pnpm prisma generate       # Regenerate client after schema change (no migration)
 pnpm prisma studio         # DB GUI → http://localhost:5555
+
+# Misc
+pnpm start            # Run production build
+pnpm favicons         # Regenerate favicons (scripts/gen-favicons.mjs)
 ```
 
 ## Architecture
@@ -38,19 +42,22 @@ No SWR, no React Query, no global state library.
 
 - NextAuth.js v5, JWT sessions
 - Roles: `SUPER_ADMIN` (credentials from env vars, single hardcoded account) | `ADMIN`
-- Middleware protects all app routes; `/s/[slug]` is fully public
+- Middleware protects all app routes; `/s/[slug]` (incl. `/s/[slug]/placements/[actId]`) is fully public
 - Only `SUPER_ADMIN` can create/manage admin accounts
+- `ADMIN` accounts created via single-use **invite links** (`InviteToken`, expires 48h): `SUPER_ADMIN` generates token (`/api/invites`) → invitee registers at `/invite/[token]` (`/api/register`). Used/expired token → `410 Gone`.
 
 ## Domain gotchas
 
 - **One active season**: `Season.isActive = true` — enforced at app level, no DB constraint. Query active season explicitly; don't assume it exists.
+- **Inactive seasons are read-only**: all writes on data belonging to an inactive season (classes, students, shows, acts, participations, order) are rejected at the API level.
 - **Participation = row existence**: `ShowParticipation` links student↔show, `ActParticipation` links student↔act (with color). No `enabled` flag. Creating an act auto-creates participation rows for all students in its class.
 - **fixedPosition pins acts**: In the ordering algorithm, `Act.fixedPosition` locks an act to a specific position. Unpinned acts flow around them in their current order.
+- **Act.duration is optional**: `Act.duration Int?` holds duration in seconds (used for show timing).
 - **Act.classId is optional**: An act can exist without a class link (e.g. opening/finale). Participation auto-creation only fires when `classId` is set.
 - **Scenes & Placements**: Acts contain ordered `Scene` entries. Each scene has `Placement` rows (student + x/y coordinates) for stage positioning.
 - **Teacher ≠ User**: Teachers have no app login — pure data entity, separate from `User`.
 - **Class is season-scoped**: Classes must be re-created per season via `seasonId` FK.
-- **Roll call is ephemeral**: `/app/classes/[id]` roll call tab has no save action — informational only.
+- **Roll call is ephemeral**: dedicated `/rollcall` page (reads `GET /api/classes/[id]/rollcall`) has no save action — informational only.
 - **Order state is volatile**: Unsaved config on `/shows/[id]/order` resets on page reload — expected behavior.
 - **IDs are UUIDs**: All entities use UUID v4.
 - **Public show link uses slug**: Slug computed at runtime from `name + season.label` (e.g. `gala-de-printemps-2025-2026`). Not stored in DB. Route: `/s/[slug]`.
@@ -71,6 +78,8 @@ Do not add E2E tests — out of scope.
 - Endpoint: `GET /api/public/shows/[slug]/stream`
 - Public show page (`/s/[slug]`) subscribes via native `EventSource` on mount
 - Server pushes on two events: admin validates order (`PUT /order`) AND admin advances current act (`PATCH /current-act`)
+- Admin drives the live show from `/shows/[id]/live` (advances current act)
+- Public placements view (`/s/[slug]/placements/[actId]`) is static (no SSE), reads `GET /api/public/shows/[slug]/acts/[actId]/placements`
 - Each push = full payload (`acts` + `currentPosition`). No partial diffs.
 - One-way only (server → client). Not WebSocket.
 

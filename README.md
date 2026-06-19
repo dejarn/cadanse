@@ -6,12 +6,13 @@ A dance school management app built for **seasons, classes, and show day**: stud
 
 - **Seasons**: one active academic year at a time; past seasons stay available for reference.
 - **Students and classes**: CRUD, class assignment per season, teachers and time slots.
-- **Shows and acts**: multiple shows per season, acts optionally linked to classes, participation managed per act.
+- **Shows and acts**: multiple shows per season, acts optionally linked to classes, with optional description and duration; participation managed per act.
 - **Stage placements**: scene-based positioning with x/y coordinates for each student on stage.
 - **Performance order**: constraint-aware generation (fixed positions, student spacing), manual tweaks, admin validation.
-- **Live show**: advance the current act and broadcast updates to spectators in real time.
+- **Live show**: advance the current act from the live console and broadcast updates to spectators in real time.
 - **Roll call**: ephemeral class attendance view for the current session (not persisted).
-- **Public program**: shareable read-only link with SSE updates on order validation and current act.
+- **Public program**: shareable read-only link with SSE updates on order validation and current act, plus a public per-act stage placements view.
+- **Admin onboarding**: super-admin invites admins via single-use, time-limited invite links.
 
 ## Tech stack
 
