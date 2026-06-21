@@ -16,6 +16,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/shows": "Spectacles",
   "/admin/users": "Comptes",
   "/admin/seasons": "Saisons",
+  "/admin/import": "Import CSV",
 }
 
 function getTitle(pathname: string): string {

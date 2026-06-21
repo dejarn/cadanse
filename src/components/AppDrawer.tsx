@@ -16,6 +16,7 @@ import ClassIcon from "@mui/icons-material/Class"
 import TheaterComedyIcon from "@mui/icons-material/TheaterComedy"
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings"
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth"
+import UploadFileIcon from "@mui/icons-material/UploadFile"
 import { usePathname, useRouter } from "next/navigation"
 
 const DRAWER_WIDTH = 260
@@ -41,6 +42,7 @@ const navItems = [
 const adminItems = [
   { label: "Comptes", href: "/admin/users", icon: <AdminPanelSettingsIcon /> },
   { label: "Saisons", href: "/admin/seasons", icon: <CalendarMonthIcon /> },
+  { label: "Import CSV", href: "/admin/import", icon: <UploadFileIcon /> },
 ]
 
 interface Props {
