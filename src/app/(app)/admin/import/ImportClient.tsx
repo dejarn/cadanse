@@ -31,10 +31,33 @@ type Props = {
   classNames: string[]
 }
 
-const ENTITY_TABS: { key: EntityKey; label: string; headers: string[]; needsSeason: boolean }[] = [
+type Tab = {
+  key: EntityKey
+  label: string
+  headers: string[]
+  previewColumns?: string[]
+  needsSeason: boolean
+}
+
+const ENTITY_TABS: Tab[] = [
   { key: "teachers", label: "Professeurs", headers: ["prenom", "nom", "nom_affichage"], needsSeason: false },
   { key: "classes", label: "Cours", headers: ["nom", "horaire", "prof_prenom", "prof_nom"], needsSeason: true },
   { key: "students", label: "Élèves", headers: ["prenom", "nom", "cours"], needsSeason: true },
+  {
+    key: "shows",
+    label: "Spectacle",
+    headers: [
+      "show_nom",
+      "show_date",
+      "acte_nom",
+      "acte_cours",
+      "acte_duree",
+      "acte_position",
+      "acte_description",
+    ],
+    previewColumns: ["acte_nom", "acte_cours", "acte_duree", "acte_position", "acte_description"],
+    needsSeason: true,
+  },
 ]
 
 const STATUS_META: Record<RowStatus, { color: string; icon: React.ReactNode; label: string }> = {
@@ -56,6 +79,7 @@ export default function ImportClient({ hasActiveSeason, seasonLabel, classNames 
   const [committing, setCommitting] = useState(false)
 
   const meta = ENTITY_TABS.find((e) => e.key === entity)!
+  const previewCols = meta.previewColumns ?? meta.headers
   const blocked = meta.needsSeason && !hasActiveSeason
 
   function reset() {
@@ -185,6 +209,17 @@ export default function ImportClient({ hasActiveSeason, seasonLabel, classNames 
           </Typography>
         ) : null}
 
+        {entity === "shows" ? (
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+            <strong>1 fichier = 1 spectacle, 1 ligne = 1 acte.</strong> <code>show_nom</code> et{" "}
+            <code>show_date</code> (<code>aaaa-mm-jj</code> ou <code>jj/mm/aaaa</code>) répétés et
+            identiques sur chaque ligne. Durée en <code>mm:ss</code> (ex&nbsp;<code>4:30</code>).{" "}
+            <code>acte_position</code> verrouille l&apos;ordre. <code>acte_cours</code> introuvable
+            est ignoré. Les participants sont créés automatiquement. Si le spectacle existe déjà,
+            ses actes sont complétés.
+          </Typography>
+        ) : null}
+
         <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
           <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={downloadTemplate}>
             Télécharger le modèle
@@ -247,13 +282,19 @@ export default function ImportClient({ hasActiveSeason, seasonLabel, classNames 
 
       {done ? (
         <Alert severity="success" sx={{ mb: 3 }} onClose={reset}>
-          Import terminé : {done.created} créé{done.created > 1 ? "s" : ""}
+          {done.mode === "append" ? "Actes ajoutés : " : "Import terminé : "}
+          {done.created} créé{done.created > 1 ? "s" : ""}
           {done.skipped > 0 ? `, ${done.skipped} ignoré${done.skipped > 1 ? "s" : ""}` : ""}.
         </Alert>
       ) : null}
 
       {preview ? (
         <Box>
+          {preview.notice ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {preview.notice}
+            </Alert>
+          ) : null}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
             <Typography variant="subtitle1">Aperçu</Typography>
             <Chip size="small" color="success" label={`${preview.summary.ok} prêt(s)`} />
@@ -271,7 +312,7 @@ export default function ImportClient({ hasActiveSeason, seasonLabel, classNames 
                 <TableRow>
                   <TableCell sx={{ width: 56 }}>Ligne</TableCell>
                   <TableCell sx={{ width: 48 }}>État</TableCell>
-                  {meta.headers.map((h) => (
+                  {previewCols.map((h) => (
                     <TableCell key={h}>{h}</TableCell>
                   ))}
                   <TableCell>Messages</TableCell>
@@ -289,7 +330,7 @@ export default function ImportClient({ hasActiveSeason, seasonLabel, classNames 
                         {STATUS_META[row.status].icon}
                       </Box>
                     </TableCell>
-                    {meta.headers.map((h) => (
+                    {previewCols.map((h) => (
                       <TableCell key={h}>{row.values[h] ?? ""}</TableCell>
                     ))}
                     <TableCell>
