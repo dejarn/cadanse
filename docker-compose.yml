@@ -56,13 +56,8 @@ services:
       migrate:
         condition: service_completed_successfully
     networks:
-      internal: {}
-      # Shared network with the external reverse-proxy stack. Routing and TLS
-      # live entirely in the proxy's own config (not in this repo). The `app`
-      # name is already taken on this network by another stack, so expose a
-      # unique alias the proxy targets (http://cadanse-app:3000).
-      edge:
-        aliases: [cadanse-app]
+      - internal
+      - edge
     mem_reservation: 128m
     mem_limit: 512m
     cpus: "0.5"
